@@ -1,96 +1,140 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    /* Aplicamos la fuente negrita y limpia a todo el documento */
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+body, html {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
 }
 
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+#map {
+    height: 100vh;
+    width: 100vw;
+    z-index: 1;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* 2. Panel Flotante */
+.glass-panel {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 24px;
+    width: 320px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+/* 3. Cabecera de Usuario */
+#user-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.vanilla:hover {
-  filter: drop-shadow(0 0 2em #f7df1eaa);
+#user-avatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    border: 2px solid #5851db;
+    object-fit: cover;
 }
 
-.card {
-  padding: 2em;
+#user-name {
+    font-weight: bold;
+    color: #1a1a1a;
+    font-size: 15px;
 }
 
-.read-the-docs {
-  color: #888;
+/* 4. BOTÓN LOGIN NEGRO (Modificación 1) */
+#btn-login {
+    background: #000000;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+#btn-login:hover {
+    background: #333333;
+    transform: translateY(-1px);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+/* 5. Formulario */
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 11px;
+    font-weight: bold;
+    color: #5851db; /* Color base del degradado para etiquetas */
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+input[type="text"], textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    font-size: 14px;
+    background: #fdfdfd;
+    transition: border-color 0.3s;
+}
+
+input:focus, textarea:focus {
+    border-color: #5851db;
+    outline: none;
+}
+
+/* 6. BOTÓN ANCHOR Y GENERALES (Modificación 2 - Tu código) */
+.btn-primary, #btn-anchor {
+    width: 100%;
+    /* Tu degradado exacto */
+    background: linear-gradient(135deg, #5851db, #8e44ad); 
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 12px;
+    font-weight: bold;
+    font-size: 15px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(88, 81, 219, 0.3);
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover, #btn-anchor:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(88, 81, 219, 0.4);
+}
+
+.separator {
+    border: 0;
+    border-top: 1px solid #eee;
+    margin: 15px 0;
+}
+
+/* 7. Ajuste para Popups del Mapa para que coincidan */
+.leaflet-popup-content button {
+    background: linear-gradient(135deg, #5851db, #8e44ad) !important;
+    border-radius: 12px !important;
+    font-weight: bold !important;
+    padding: 10px !important;
+    color: white !important;
+    border: none !important;
 }
