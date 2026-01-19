@@ -17,8 +17,12 @@ export class NostrService {
 
 // Solo añadimos authors si hay pubkey
 if (AuthManager.userPubkey) {
-    filtro.authors = [AuthManager.userPubkey];
-}
+        filtros.push({
+            kinds: [1],
+            authors: [AuthManager.userPubkey],
+            limit: 50
+        });
+    }
 
    return this.pool.subscribeMany(
     this.relays, 
@@ -42,8 +46,31 @@ if (AuthManager.userPubkey) {
 );
 
 }
-    
 
+async publishAnchor(eventData) {
+    // 1. Preparar el evento base
+    const event = {
+        kind: 1,
+        pubkey: eventData.pubkey,
+        created_at: Math.floor(Date.now() / 1000),
+        content: eventData.content,
+        tags: eventData.tags
+    };
+
+    // 2. Firmar usando la extensión del navegador (Alby/Nostr)
+    try {
+        const signedEvent = await window.nostr.signEvent(event);
+        
+        // 3. Publicar a todos los relays configurados
+        await Promise.any(this.pool.publish(this.relays, signedEvent));
+        
+        console.log("✅ Evento publicado con éxito:", signedEvent);
+        return signedEvent;
+    } catch (err) {
+        console.error("❌ Error al firmar o publicar:", err);
+        throw err;
+    }
+}
     // nostr-service.js version original sin funcionar
 
    /* async getUserProfile(pubkey) {
@@ -83,4 +110,6 @@ async getUserProfile(pubkey) {
     }
     return null;
 }
+
+
 }
