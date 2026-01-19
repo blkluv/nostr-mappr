@@ -17,7 +17,7 @@ export class NostrService {
 
 // Solo añadimos authors si hay pubkey
 if (AuthManager.userPubkey) {
-        filtros.push({
+        filtro.push({
             kinds: [1],
             authors: [AuthManager.userPubkey],
             limit: 50
