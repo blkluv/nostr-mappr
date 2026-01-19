@@ -7,38 +7,46 @@ export class NostrService {
         this.pool = new SimplePool();
     }
 
+    
     subscribeToAnchors(onEvent) {
-        // En producción, enviamos dos filtros claros en un array
-        const filtros = [
-            { kinds: [1], "#t": ["spatial_anchor"] }
-        ];
+    const filtro = {
+    kinds: [1],
+    "#t": ["spatial_anchor"],
+    limit: 100
+};
 
-        if (AuthManager.userPubkey) {
-            filtros.push({ kinds: [1], authors: [AuthManager.userPubkey] });
+// Solo añadimos authors si hay pubkey
+if (AuthManager.userPubkey) {
+    filtro.authors = [AuthManager.userPubkey];
+}
+
+   return this.pool.subscribeMany(
+    this.relays, 
+    [filtro],   // <-- IMPORTANTE: array con UN solo objeto dentro
+    {
+        onevent(event) {
+            if (event && event.id) {
+                onEvent(event);
+            }
+        },
+        oneose() {
+            console.log("Conexión exitosa: Historial sincronizado.");
+        },
+        onclose(relay) {
+            console.warn("🔌 Relay cerrado:", relay);
+        },
+        onerror(err) {
+            console.error("⚠️ Error de relay:", err);
         }
-
-        return this.pool.subscribeMany(this.relays, filtros, {
-            onevent(event) { onEvent(event); },
-            oneose() { console.log("Historial sincronizado."); }
-        });
     }
+);
 
-    async publishAnchor(eventData) {
-        const event = {
-            kind: 1,
-            created_at: Math.floor(Date.now() / 1000),
-            content: eventData.content,
-            tags: eventData.tags,
-            pubkey: eventData.pubkey
-        };
-        const signedEvent = await window.nostr.signEvent(event);
-        await Promise.any(this.pool.publish(this.relays, signedEvent));
-        return signedEvent;
-    }
+}
+    
 
-    // nostr-service.js
+    // nostr-service.js version original sin funcionar
 
-    async getUserProfile(pubkey) {
+   /* async getUserProfile(pubkey) {
         console.log("Buscando metadatos para:", pubkey);
         
         // El filtro para perfiles es Kind 0
@@ -57,5 +65,22 @@ export class NostrService {
         }
         return null;
 }
-}
 
+*/
+
+async getUserProfile(pubkey) {
+    const filter = { kinds: [0], authors: [pubkey], limit: 1 };
+    
+    try {
+        // Usamos un timeout para no esperar eternamente a relays lentos
+        const event = await this.pool.get(this.relays, filter, { timeout: 3000 });
+        
+        if (event && event.content) {
+            return JSON.parse(event.content);
+        }
+    } catch (e) {
+        console.warn("No se pudo obtener el perfil de:", pubkey);
+    }
+    return null;
+}
+}

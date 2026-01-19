@@ -6,12 +6,12 @@ import { AuthManager } from './auth.js';
 import { ListManager } from './ui-list.js';
 
 // --- CONFIGURACIÓN ---
-const RELAYS = ['wss://nos.lol', 'wss://relay.nostr.band', 'wss://relay.snort.social'];
+const RELAYS = ['wss://nos.lol', /*'wss://relay.nostr.band'*/ 'wss://relay.damus.io']; /*'wss://relay.snort.social'*/
 const ROSARIO_COORDS = [-32.9468, -60.6393];
 
 // --- INICIALIZACIÓN ---
-const map = new MapManager('map', [-32.9468, -60.6393]); 
-const nostr = new NostrService(['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net']);
+const map = new MapManager('map', ROSARIO_COORDS); 
+const nostr = new NostrService(RELAYS);
 
 // 1. Cargar puntos existentes (Suscripción)
 function iniciarSuscripcion() {
