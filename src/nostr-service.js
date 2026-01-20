@@ -7,7 +7,31 @@ export class NostrService {
         this.pool = new SimplePool();
     }
 
-    
+
+
+subscribeToAnchors(onEvent) {
+    // Filtro limpio y estricto
+    const filtros = [
+        {
+            kinds: [1],
+            "#t": ["spatial_anchor"]
+        }
+    ];
+
+    return this.pool.subscribeMany(this.relays, filtros, {
+        onevent(event) {
+            onEvent(event);
+        },
+        oneose() {
+            console.log("✅ Historial sincronizado correctamente.");
+        }
+    });
+}
+
+
+
+
+   /* 
     subscribeToAnchors(onEvent) {
         // 1. Definimos el filtro global inicial
         const filtroGlobal = {
@@ -52,7 +76,7 @@ export class NostrService {
         }
     );
 }
-
+*/
     
     async publishAnchor(eventData) {
         const event = {

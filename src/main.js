@@ -81,8 +81,6 @@ document.getElementById('btn-login').addEventListener('click', async () => {
 });
 
 // Publicar Anclaje
-// Dentro de tu main.js, reemplaza el evento del botón por este:
-// --- Reemplaza desde el comentario // Publicar Anclaje hasta el final del evento del botón ---
 
 document.getElementById('btn-anchor').addEventListener('click', async () => {
     // 1. Verificar si hay usuario usando el AuthManager
