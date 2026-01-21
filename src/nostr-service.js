@@ -10,35 +10,6 @@ export class NostrService {
 
 
 subscribeToAnchors(onEvent) {
-    // Definimos el filtro como una constante de solo lectura
-    // para que el compilador no intente optimizarlo como un array indexado
-    const filter = Object.freeze({
-        kinds: [1],
-        "#t": ["spatial_anchor"]
-    });
-
-    console.log("🚀 Enviando REQ directo sin anidamiento...");
-
-    // Usamos subscribeMany pero pasando una estructura que NO sea expandible
-    return this.pool.subscribeMany(
-        this.relays,
-        [filter], 
-        {
-            onevent(event) {
-                if (event?.id) {
-                    console.log("✨ Evento recuperado con éxito:", event.id);
-                    onEvent(event);
-                }
-            },
-            oneose() {
-                console.log("✅ El relay aceptó el filtro y terminó la búsqueda.");
-            }
-        }
-    );
-}
-
-/*
-subscribeToAnchors(onEvent) {
 
     const filtroPrincipal = {
         kinds: [1],
@@ -47,11 +18,11 @@ subscribeToAnchors(onEvent) {
 
     console.log("🔍 Enviando filtro único:", filtroPrincipal);
 
-    const filtrosParaEnviar = [filtroPrincipal];
+    /*const filtrosParaEnviar = [filtroPrincipal];*/
     
     return this.pool.subscribeMany(
         this.relays, 
-        filtrosParaEnviar, 
+        filtroPrincipal, 
         {
             onevent(event) {
                 if (event && event.id) {
@@ -65,7 +36,7 @@ subscribeToAnchors(onEvent) {
         }
     );
 }
-*/
+
 
    /* 
     subscribeToAnchors(onEvent) {
