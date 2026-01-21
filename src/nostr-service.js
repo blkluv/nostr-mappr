@@ -10,23 +10,27 @@ export class NostrService {
 
 
 subscribeToAnchors(onEvent) {
-    // 1. Definimos el objeto de filtro puro
+    // Definimos el objeto de filtro puro
     const filtroPrincipal = {
         kinds: [1],
         "#t": ["spatial_anchor"]
     };
 
-    // 2. IMPORTANTE: Pasamos el filtro de forma que la librería 
-    // no genere un array de arrays.
+    console.log("🔍 Enviando filtro único:", filtroPrincipal);
+
+    // Quitamos los corchetes de [filtroPrincipal] y pasamos el objeto directo
     return this.pool.subscribeMany(
         this.relays, 
-        [filtroPrincipal], // Un solo nivel de corchetes aquí
+        [filtroPrincipal], 
         {
             onevent(event) {
-                if (event && event.id) onEvent(event);
+                if (event && event.id) {
+                    console.log("✨ ¡Punto encontrado!", event.id);
+                    onEvent(event);
+                }
             },
             oneose() {
-                console.log("✅ Historial sincronizado correctamente.");
+                console.log("✅ Conexión limpia: Historial sincronizado.");
             }
         }
     );
