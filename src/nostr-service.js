@@ -10,23 +10,23 @@ export class NostrService {
 
 
 subscribeToAnchors(onEvent) {
-    // Definimos el objeto de filtro directamente
+    // 1. Definimos el objeto de filtro puro
     const filtroPrincipal = {
         kinds: [1],
         "#t": ["spatial_anchor"]
     };
 
-    // Usamos el método de la pool pasándole el OBJETO directamente, 
-    // o asegurándonos de que no haya doble anidación.
+    // 2. IMPORTANTE: Pasamos el filtro de forma que la librería 
+    // no genere un array de arrays.
     return this.pool.subscribeMany(
         this.relays, 
-        [filtroPrincipal], // UN SOLO nivel de corchetes
+        [filtroPrincipal], // Un solo nivel de corchetes aquí
         {
             onevent(event) {
                 if (event && event.id) onEvent(event);
             },
             oneose() {
-                console.log("✅ Historial sincronizado.");
+                console.log("✅ Historial sincronizado correctamente.");
             }
         }
     );
