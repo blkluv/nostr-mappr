@@ -36,54 +36,6 @@ subscribeToAnchors(onEvent) {
         }
     );
 }
-
-
-   /* 
-    subscribeToAnchors(onEvent) {
-        // 1. Definimos el filtro global inicial
-        const filtroGlobal = {
-            kinds: [1],
-            "#t": ["spatial_anchor"],
-            limit: 200
-        };
-
-        
-        const filtros = [filtroGlobal];
-
-        if (AuthManager.userPubkey) {
-            filtros.push({
-                kinds: [1],
-                authors: [AuthManager.userPubkey],
-                limit: 50
-            });
-        }
-
-        console.log("📡 Suscribiendo a relays con filtros:", filtros);
-
-        console.log("🔍 Depuración: Suscribiendo a estos relays:", this.relays);
-        console.log("📋 Depuración: Filtros enviados:", JSON.stringify(filtros));
-
-        return this.pool.subscribeMany(
-        this.relays, 
-        filtros, 
-        {
-            onevent(event) {
-                // Verificamos si el evento tiene etiquetas de geohash (NIP-01/Geo)
-                console.log("✨ Evento recibido de relay:", event.id);
-                onEvent(event);
-            },
-            oneose() {
-                // EOSE (End of Stored Events): Esto confirma que el relay 
-                // ya terminó de enviarnos los eventos PASADOS.
-                console.log("✅ Fin de eventos almacenados (EOSE). Buscando nuevos...");
-            },
-            onerror(err) {
-                console.error("❌ Error en relay durante suscripción:", err);
-            }
-        }
-    );
-}
-*/
     
     async publishAnchor(eventData) {
         const event = {

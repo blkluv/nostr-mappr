@@ -11,9 +11,8 @@ export class MapManager {
         }).addTo(this.map);
     }
 
-    /**
-     * Obtiene la ubicación actual del usuario mediante el navegador.
-     */
+    /* Obtiene la ubicación actual del usuario mediante el navegador. */
+
     async getCurrentLocation() {
         return new Promise((resolve, reject) => {
             if (!("geolocation" in navigator)) {
@@ -26,16 +25,14 @@ export class MapManager {
         });
     }
 
-    /**
-     * Mueve la vista del mapa a una ubicación.
-     */
+    /* Mueve la vista del mapa a una ubicación. */
+     
     setView(lat, lon, zoom = 14) {
         this.map.setView([lat, lon], zoom);
     }
 
-    /**
-     * Añade un marcador al mapa si no existe ya.
-     */
+    /* Añade un marcador al mapa si no existe ya.*/
+     
     addMarker(id, lat, lon, popupHTML) {
         if (this.markers.has(id)) return; // Evitar duplicados
 
@@ -43,15 +40,38 @@ export class MapManager {
         this.markers.set(id, marker);
     }
 
-    /**
-     * Genera el HTML para el popup del marcador.
-     */
-    createPopupHTML(event, name) {
-        return `
-            <div style="padding:10px; min-width:150px;">
-                <strong style="color:#5851db;">@${name}</strong>
-                <p style="margin:5px 0; font-size:13px;">${event.content.split('\n\n')[0]}</p>
+    /* Genera el HTML para el popup del marcador. */
+
+createPopupHTML(event, profile) {
+    const name = profile?.display_name || profile?.name || event.pubkey.substring(0, 8);
+    const picture = profile?.picture || 'https://www.gravatar.com/avatar/0000?d=mp&f=y';
+    const titulo = event.content.split('\n')[0] || "Punto de interés";
+
+    return `
+        <div class="popup-container">
+            <div class="popup-header">
+                <img src="${picture}" class="popup-avatar" alt="${name}">
+                <div class="popup-user-info">
+                    <span class="popup-username">${name}</span>
+                    <span class="popup-pubkey">@${event.pubkey.substring(0, 8)}</span>
+                </div>
             </div>
-        `;
-    }
+
+            <div class="popup-content">
+                ${event.content}
+            </div>
+
+            <div class="popup-actions">
+                <button onclick="window.followUser('${event.pubkey}', '${name}')" 
+                        class="btn-popup btn-follow">
+                    Follow
+                </button>
+                <button onclick="window.zapUser('${event.pubkey}', '${name}', '${titulo}')" 
+                        class="btn-popup btn-zap">
+                    ⚡ Zap
+                </button>
+            </div>
+        </div>
+    `;
+}
 }

@@ -3,10 +3,9 @@ import { MapManager } from './ui-map.js';
 import { NostrService } from './nostr-service.js';
 import { GeoLogic } from './geo-utils.js';
 import { AuthManager } from './auth.js';
-import { ListManager } from './ui-list.js';
 
 // --- CONFIGURACIÓN ---
-const RELAYS = ['wss://nos.lol', 'wss://relay.nostr.band', 'wss://relay.damus.io']; /*'wss://relay.snort.social'*/
+const RELAYS = ['wss://nos.lol', 'wss://relay.primal.net', 'wss://relay.damus.io']; 
 const ROSARIO_COORDS = [-32.9468, -60.6393];
 
 // --- INICIALIZACIÓN ---
@@ -14,18 +13,30 @@ const map = new MapManager('map', ROSARIO_COORDS);
 const nostr = new NostrService(RELAYS);
 
 // 1. Cargar puntos existentes (Suscripción)
+
 function iniciarSuscripcion() {
-    nostr.subscribeToAnchors((event) => {
+    nostr.subscribeToAnchors(async (event) => {
+        // 1. Intentar obtener el perfil completo (Foto, Nombre real, etc.)
+        let profile = AuthManager.profileCache[event.pubkey];
+        
+        if (!profile) {
+            // Si no está en caché, lo pedimos al relay
+            profile = await nostr.getUserProfile(event.pubkey);
+            if (profile) AuthManager.saveProfile(event.pubkey, profile);
+        }
+
+        // 2. Obtener el nombre para la lista lateral
         const name = AuthManager.getDisplayName(event.pubkey);
-        
-        // 1. Mostrar siempre en la lista (aunque no tenga coordenadas)
-        ListManager.addEventToList(event, name);
-        
-        // 2. Intentar mostrar en el mapa
+
+        // 3. Intentar mostrar en el mapa con el nuevo Popup enriquecido
         const hash = GeoLogic.getHashFromEvent(event);
         if (hash) {
             const { lat, lon } = GeoLogic.decode(hash);
-            map.addMarker(event.id, lat, lon, map.createPopupHTML(event, name));
+            
+            // IMPORTANTE: Ahora enviamos el objeto 'profile' completo 
+            // para que el popup pueda mostrar la foto y los botones.
+            const popupHTML = map.createPopupHTML(event, profile);
+            map.addMarker(event.id, lat, lon, popupHTML);
         }
     });
 }
@@ -122,3 +133,34 @@ document.getElementById('btn-anchor').addEventListener('click', async () => {
         alert("Error de GPS o de firma: " + err.message);
     }
 });
+
+// main.js
+
+window.followUser = async (pubkey, name) => {
+    // 1. Verificamos si el usuario está logueado
+    if (!AuthManager.userPubkey) {
+        alert("¡Hola! Necesitas iniciar sesión para seguir a otros usuarios.");
+        // Opcional: podrías disparar AuthManager.login() aquí mismo
+        return;
+    }
+
+    // 2. Validación: No puedes seguirte a ti mismo
+    if (pubkey === AuthManager.userPubkey) {
+        alert("¡Ese eres tú! No puedes seguirte a ti mismo (aún).");
+        return;
+    }
+
+    console.log(`✅ Siguiendo a ${name} (${pubkey})`);
+    alert(`Próximamente: Siguiendo a ${name} en la red Nostr`);
+};
+
+window.zapUser = (pubkey, name, titulo) => {
+    // 1. Verificamos sesión
+    if (!AuthManager.userPubkey) {
+        alert("Debes estar conectado para enviar Zaps.");
+        return;
+    }
+
+    console.log(`⚡ Zap iniciado para ${name} por: ${titulo}`);
+    alert(`⚡ Próximamente: Enviando sats a ${name} por recomendar "${titulo}"`);
+};
