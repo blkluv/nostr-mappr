@@ -197,7 +197,7 @@ searchInput.onkeypress = (e) => {
     if (e.key === 'Enter') ejecutarBusqueda();
 };
 
-ddocument.getElementById('btn-locate-me').onclick = async (e) => {
+document.getElementById('btn-locate-me').onclick = async (e) => {
     e.stopPropagation();
     const btn = document.getElementById('btn-locate-me');
     const icon = btn.querySelector('i');
@@ -215,3 +215,29 @@ ddocument.getElementById('btn-locate-me').onclick = async (e) => {
         icon.className = "fas fa-location-arrow";
     }
 };
+
+const scrollRight = document.getElementById('btn-scroll-right');
+const scrollLeft = document.getElementById('btn-scroll-left');
+const filterBar = document.getElementById('filter-bar-container');
+
+if (filterBar) {
+    // Función para mover a la derecha
+    scrollRight.onclick = () => filterBar.scrollBy({ left: 240, behavior: 'smooth' });
+
+    // Función para mover a la izquierda
+    scrollLeft.onclick = () => filterBar.scrollBy({ left: -240, behavior: 'smooth' });
+
+    // Control de visibilidad de flechas
+    filterBar.onscroll = () => {
+        const scrollPos = filterBar.scrollLeft;
+        const maxScroll = filterBar.scrollWidth - filterBar.clientWidth;
+
+        // Mostrar/Ocultar Izquierda: Si nos movimos más de 10px del inicio
+        scrollLeft.style.opacity = scrollPos > 10 ? "1" : "0";
+        scrollLeft.style.pointerEvents = scrollPos > 10 ? "auto" : "none";
+
+        // Mostrar/Ocultar Derecha: Si faltan más de 10px para llegar al final
+        scrollRight.style.opacity = scrollPos < maxScroll - 10 ? "1" : "0";
+        scrollRight.style.pointerEvents = scrollPos < maxScroll - 10 ? "auto" : "none";
+    };
+}

@@ -10,11 +10,28 @@
 </head>
 <body>
     <div id="map"></div>
-    <div id="filter-bar-container"></div>
+    
+    
+    <div id="top-interface-wrapper">
     <div id="search-container">
-    <input type="text" id="search-input" placeholder="Buscar dirección o ciudad...">
-    <button id="btn-search">🔍</button>
+        <input type="text" id="search-input" placeholder="Buscar dirección o ciudad...">
+        <button id="btn-search">🔍</button>
+    </div>
+    
+    <div id="filter-scroll-wrapper">
+    <button id="btn-scroll-left" class="scroll-arrow left" style="opacity: 0; pointer-events: none;">
+        <i class="fas fa-chevron-left"></i>
+    </button>
+
+    <div id="filter-bar-container">
+        </div>
+
+    <button id="btn-scroll-right" class="scroll-arrow right">
+        <i class="fas fa-chevron-right"></i>
+    </button>
 </div>
+</div>
+
     <button id="btn-locate-me" title="Centrar en mi ubicación"> <i class="fas fa-crosshairs"></i> </button>
     
     <div id="controls" class="glass-panel">
