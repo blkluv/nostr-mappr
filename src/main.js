@@ -173,17 +173,6 @@ function toggleFilter(id, element) {
     });
 }
 
-document.getElementById('btn-search').onclick = async () => {
-    const query = document.getElementById('search-input').value;
-    if (!query) return;
-
-    try {
-        await map.searchAddress(query);
-    } catch (err) {
-        alert("¡Vaya! No pudimos encontrar ese lugar.");
-    }
-};
-
 const searchInput = document.getElementById('search-input');
 const searchBtn = document.getElementById('btn-search');
 
@@ -206,4 +195,23 @@ searchBtn.onclick = ejecutarBusqueda;
 // Buscar al presionar "Enter" en el teclado
 searchInput.onkeypress = (e) => {
     if (e.key === 'Enter') ejecutarBusqueda();
+};
+
+ddocument.getElementById('btn-locate-me').onclick = async (e) => {
+    e.stopPropagation();
+    const btn = document.getElementById('btn-locate-me');
+    const icon = btn.querySelector('i');
+    
+    // Cambiamos el icono por uno de carga
+    icon.className = "fas fa-spinner fa-spin"; 
+    
+    try {
+        const pos = await map.getCurrentLocation();
+        map.setView(pos.lat, pos.lon, 16);
+    } catch (err) {
+        alert("📍 Error al obtener ubicación");
+    } finally {
+        // Restauramos el icono original
+        icon.className = "fas fa-location-arrow";
+    }
 };

@@ -3,11 +3,14 @@ import L from 'leaflet';
 
 export class MapManager {
     constructor(containerId, defaultCoords) {
-        this.map = L.map(containerId).setView(defaultCoords, 13);
+        this.map = L.map(containerId, { zoomControl: false }).setView(defaultCoords, 13);        
         this.markers = new Map(); // Para rastrear marcadores por ID de evento
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
             attribution: '© OpenStreetMap contributors, © CARTO'
+        }).addTo(this.map);
+        L.control.zoom({
+        position: 'bottomright' 
         }).addTo(this.map);
     }
 

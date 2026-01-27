@@ -487,3 +487,56 @@ select {
 #btn-search:hover {
     transform: scale(1.1);
 }
+
+/* BOTÓN CENTRAR EN MI UBICACIÓN */
+
+#btn-locate-me {
+    position: absolute;
+    bottom: 95px; /* Ajuste para quedar pegado justo arriba del zoom */
+    right: 11px;
+    z-index: 1000;
+    
+    /* Dimensiones idénticas a los botones de zoom (30x30 o 34x34 según tu resolución) */
+    width: 32px; 
+    height: 32px;
+    
+    background-color: #fff;
+    border: 1px solid #ccc; /* Igual al borde del zoom */
+    border-radius: 4px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+}
+
+#btn-locate-me i {
+    font-size: 18px; /* Aumentado para que se vea claro */
+    color: #444;
+}
+
+#btn-locate-me:hover {
+    background-color: #f4f4f4;
+}
+
+/* 2. Personalización de los botones de Zoom de Leaflet */
+.leaflet-bar {
+    border: 1px solid #ccc !important; /* Borde más fino y sutil */
+    box-shadow: 0 1px 5px rgba(0,0,0,0.2) !important;
+    border-radius: 4px !important;
+}
+
+.leaflet-bar a {
+    background-color: white !important;
+    color: #333 !important;
+    border-bottom: 1px solid #ccc !important;
+    width: 30px !important;
+    height: 30px !important;
+    line-height: 30px !important;
+}
+
+.leaflet-bar a:hover {
+    background-color: #f4f4f4 !important;
+}
