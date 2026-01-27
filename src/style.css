@@ -390,6 +390,16 @@ input:focus, textarea:focus {
     transition: all 0.7s ease-in-out;
 }
 
+.btn-delete.owner-only {
+    display: none;
+    background-color: #ff4d4d;
+    color: white;
+}
+
+.is-owner .btn-delete.owner-only {
+    display: block;
+}
+
 /* --- BARRA DE FILTROS (Google Maps Style) --- */
 
 #top-interface-wrapper {

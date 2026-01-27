@@ -7,8 +7,6 @@ export class NostrService {
         this.pool = new SimplePool();
     }
 
-
-
 subscribeToAnchors(onEvent) {
 
     const filtroPrincipal = {
@@ -61,9 +59,6 @@ subscribeToAnchors(onEvent) {
         }
     }
 
-    /**
-     * Recupera los metadatos de perfil del usuario (Kind 0).
-     */
     async getUserProfile(pubkey) {
         const filter = { kinds: [0], authors: [pubkey], limit: 1 };
         
@@ -79,4 +74,36 @@ subscribeToAnchors(onEvent) {
         }
         return null;
     }
+
+    // Método para eliminar un evento (ejemplo de NIP-09)
+
+async deleteEvent(eventId) {
+    const event = {
+        kind: 5,
+        pubkey: AuthManager.userPubkey, 
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [['e', eventId]],
+        content: 'Eliminando anclaje de prueba'
+    };
+
+    try {
+        const signedEvent = await window.nostr.signEvent(event);
+        return await this.publish(signedEvent); 
+    } catch (err) {
+        console.error("Error al borrar:", err);
+        return false;
+    }
+}
+async publish(event) {
+    try {
+        // Publicamos en todos los relays configurados
+        await Promise.all(this.pool.publish(this.relays, event));
+        console.log("🚀 Evento de borrado (Kind 5) enviado.");
+        return true;
+    } catch (err) {
+        console.error("❌ Fallo al publicar el borrado:", err);
+        return false;
+    }
+}
+
 }

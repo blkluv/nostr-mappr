@@ -14,6 +14,7 @@ function updateView(isLoggedIn, profile = null) {
         viewAnon.style.display = 'none';
         viewConnected.style.display = 'block';
 
+        window.userPubkey = AuthManager.userPubkey;
         // Inyectar datos del perfil
         if (profile) {
             document.getElementById('profile-name').textContent = profile.display_name || profile.name || "Nostr User";
@@ -62,6 +63,7 @@ export function initUI(nostrInstance, refreshMapCallback) {
         btnLogin.addEventListener('click', async () => {
             try {
                 await AuthManager.login();
+                window.userPubkey = AuthManager.userPubkey;
                 const profile = await nostrInstance.getUserProfile(AuthManager.userPubkey);
                 updateView(true, profile);
                 if (refreshMapCallback) refreshMapCallback();

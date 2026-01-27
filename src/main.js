@@ -40,9 +40,14 @@ if (filterContainer && categorySelect) {
 }
 
 // Cargar puntos existentes
+const eventosProcesados = new Set();
 
 function iniciarSuscripcion() {
     nostr.subscribeToAnchors(async (event) => {
+        
+        if (eventosProcesados.has(event.id)) return;
+        eventosProcesados.add(event.id);
+
         let profile = AuthManager.profileCache[event.pubkey];
         
         if (!profile) {
@@ -265,3 +270,50 @@ searchInput.addEventListener('input', () => {
     btnClear.style.display = searchInput.value.length > 0 ? 'block' : 'none';
 });
 
+map.map.on('popupopen', (e) => {
+    // Obtenemos el contenedor del popup recién abierto
+    const container = e.popup._contentNode.querySelector('.popup-container');
+    if (container) {
+        const pubkeyPunto = container.getAttribute('data-pubkey');
+        const miPubkey = window.userPubkey || AuthManager.userPubkey; // Doble verificación
+
+        if (miPubkey && miPubkey === pubkeyPunto) {
+            container.classList.add('is-owner');
+            console.log("🛠️ Eres el dueño. Botón de borrado habilitado.");
+        }
+    }
+});
+
+
+window.borrarPunto = async (eventId) => {
+    // 1. Confirmación de seguridad
+    if (!confirm("¿Deseas eliminar permanentemente este anclaje de la red Nostr?")) return;
+
+    console.log(`🗑️ Intentando borrar evento: ${eventId}`);
+
+    try {
+        // 2. Llamamos al servicio de Nostr para firmar el borrado (Kind 5)
+        const exito = await nostr.deleteEvent(eventId); 
+
+        if (exito) {
+            // 3. Si tuvo éxito, lo eliminamos visualmente del mapa
+            const marcador = map.markers.get(eventId);
+            if (marcador) {
+                map.map.removeLayer(marcador);
+                map.markers.delete(eventId);
+            }
+            
+            // 4. Lo quitamos de nuestra lista de control interna
+            if (typeof eventosProcesados !== 'undefined') {
+                eventosProcesados.delete(eventId);
+            }
+            
+            alert("✅ Solicitud de borrado enviada con éxito.");
+        } else {
+            alert("❌ Hubo un problema al procesar el borrado.");
+        }
+    } catch (err) {
+        console.error("Error en el proceso de borrado:", err);
+        alert("Ocurrió un error inesperado al intentar borrar.");
+    }
+};
