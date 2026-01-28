@@ -76,6 +76,33 @@ export function initUI(nostrInstance, refreshMapCallback) {
     // Listener Logout
     const btnLogout = document.getElementById('btn-logout');
     if (btnLogout) {
-        btnLogout.addEventListener('click', () => window.location.reload());
+    btnLogout.addEventListener('click', () => {
+        console.log("👋 Cerrando sesión y limpiando datos locales...");
+        
+        // 1. Ejecutamos la limpieza en AuthManager (borra el localStorage)
+        AuthManager.logout(); 
+        
+         });
+    }
+
+    if (AuthManager.isLoggedIn()) {
+        const pubkey = AuthManager.userPubkey;
+        // Buscamos el perfil en caché o en la red para "despertar" la interfaz
+        const cachedProfile = AuthManager.profileCache[pubkey];
+        
+        if (cachedProfile) {
+            updateView(true, cachedProfile);
+        } else {
+            // Si no está en caché, lo pedimos a Nostr
+            nostrInstance.getUserProfile(pubkey).then(profile => {
+                if (profile) {
+                    AuthManager.saveProfile(pubkey, profile);
+                    updateView(true, profile);
+                } else {
+                    // Si no hay perfil aún, al menos mostramos la vista conectada con la pubkey
+                    updateView(true);
+                }
+            });
+        }
     }
 }

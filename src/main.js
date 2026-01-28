@@ -12,6 +12,11 @@ import { initSearch } from './search-controller.js';
 const RELAYS = ['wss://nos.lol', 'wss://relay.primal.net', 'wss://relay.damus.io']; 
 const ROSARIO_COORDS = [-32.9468, -60.6393];
 
+
+// --- SESIÓN DE USUARIO ---
+const sessionActive = AuthManager.isLoggedIn(); 
+if (sessionActive) console.log("🔐 Sesión recuperada:", AuthManager.userPubkey);
+
 // --- INICIALIZACIÓN ---
 const map = new MapManager('map', ROSARIO_COORDS); 
 window.map = map;
@@ -59,7 +64,6 @@ map.getCurrentLocation()
     .then(pos => map.setView(pos.lat, pos.lon))
     .catch(err => console.warn("Usando ubicación por defecto:", err));
 
-// --- VINCULACIÓN DE BOTONES ---
 
 initUI(nostr, iniciarSuscripcion);
 
