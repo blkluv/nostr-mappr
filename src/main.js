@@ -82,6 +82,7 @@ initUI(nostr, iniciarSuscripcion);
 
 // Publicar Anclaje
 
+/* DESACTIVADO POR AHORA PARA PRUEBAS
 document.getElementById('btn-anchor').addEventListener('click', async () => {
     if (!AuthManager.userPubkey) {
         alert("Debes iniciar sesión primero.");
@@ -128,7 +129,58 @@ document.getElementById('btn-anchor').addEventListener('click', async () => {
         alert("Error de GPS o de firma: " + err.message);
     }
 });
+*/ 
 
+// --- CÓDIGO DE PRUEBA (VOLÁTIL) PARA EL BOTÓN ANCHOR ---
+// Este código no firma eventos y los puntos desaparecen al refrescar.
+
+document.getElementById('btn-anchor').addEventListener('click', async () => {
+    // 1. Validaciones básicas de interfaz
+    const categoria = categorySelect.value;
+    if (!categoria) {
+        alert("⚠️ Por favor, selecciona una categoría para las pruebas.");
+        categorySelect.focus();
+        return;
+    }
+
+    try {
+        // 2. Obtener ubicación y datos del formulario
+        const pos = await map.getCurrentLocation(); 
+        const nombre = document.getElementById('poi-name').value || "Punto de Prueba";
+        const desc = document.getElementById('poi-desc').value || "Test de diseño y categorías.";
+
+        // 3. Crear el objeto de evento "ficticio"
+        const mockEvent = {
+            id: "test-" + Date.now(), // ID temporal único
+            pubkey: AuthManager.userPubkey || "00000000",
+            content: `${nombre}\n\n${desc}`,
+            tags: [
+                ["t", categoria],
+                ["t", "spatial_anchor"]
+            ]
+        };
+
+        // 4. Registrar en el Set local para que el filtro lo permita
+        eventosProcesados.add(mockEvent.id);
+
+        // 5. Generar el HTML y añadir el marcador al mapa
+        // Aquí se usará tu nueva lógica de iconos de ui-map.js
+        const currentProfile = AuthManager.profileCache[mockEvent.pubkey] || { name: "Tester" };
+        const html = map.createPopupHTML(mockEvent, currentProfile, categoria);
+        
+        map.addMarker(mockEvent.id, pos.lat, pos.lon, html, categoria);
+        
+        console.log(`🧪 Test Visual: Creado punto con categoría "${categoria}"`);
+        
+        // Limpiamos los campos para la siguiente prueba
+        document.getElementById('poi-name').value = '';
+        document.getElementById('poi-desc').value = '';
+
+    } catch (err) {
+        console.error("Error en el simulador de anclaje:", err);
+        alert("Error de GPS: " + err.message);
+    }
+});
 
 window.followUser = async (pubkey, name) => {
     // 1. Verificamos si el usuario está logueado

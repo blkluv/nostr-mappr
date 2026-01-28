@@ -1,5 +1,6 @@
 // ui-map.js
 import L from 'leaflet';
+import { CATEGORIAS } from './categories.js';
 
 export class MapManager {
     constructor(containerId, defaultCoords) {
@@ -54,6 +55,8 @@ createPopupHTML(event, profile, categoriaId = 'general') {
     const titulo = partes[0] || "Punto de interés";
     const descripcion = partes.slice(1).join('\n\n') || ""; 
     const categoriaLabel = categoriaId.charAt(0).toUpperCase() + categoriaId.slice(1);
+    const infoCat = CATEGORIAS.find(c => c.id === categoriaId) || CATEGORIAS.find(c => c.id === 'general');
+    const iconoClass = infoCat ? infoCat.icon : 'fa-map-pin';
 
     return `
         <div class="popup-container" data-pubkey="${event.pubkey}">
@@ -67,7 +70,7 @@ createPopupHTML(event, profile, categoriaId = 'general') {
 
             <div class="popup-content">
                 <strong class="popup-title">${titulo}</strong>
-                <span class="popup-category-badge">${categoriaLabel}</span>
+                <span class="popup-category-badge"><i class="fas ${iconoClass}"></i> ${categoriaLabel}</span>
                 <p class="popup-description">${descripcion}</p>
             </div>
 
