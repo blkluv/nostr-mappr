@@ -33,86 +33,12 @@
 </div>
 </div>
 
-    <button id="btn-locate-me" title="Centrar en mi ubicación"> <i class="fas fa-crosshairs"></i> </button>
+<button id="btn-locate-me" title="Centrar en mi ubicación"> <i class="fas fa-crosshairs"></i> </button>
     
-    <div id="controls" class="glass-panel">
-        
-        <div id="view-anon" class="ui-section">
-    <div id="user-header"> 
-        <div class="user-avatar-group">
-             <img id="user-avatar" src="https://www.gravatar.com/avatar/0?d=mp" alt="Invitado">
-        <span id="user-name">Invitado</span>
-        </div>
-        <button id="btn-login">🔑 Conectar NOSTR</button>
-    </div>
-</div>
 
-    <div id="view-connected" style="display: none;">
 
-        <div class="connected-header">
-    <div class="profile-group">
-        <img id="profile-avatar" src="" alt="Perfil"> <div class="profile-text">
-            <h3 id="profile-name">Cargando...</h3>
-            <span id="profile-pubkey">@...</span>
-        </div>
-    </div>
-    <button id="btn-logout" title="Desconectar">✕</button>
-</div>
 
-<div class="stats-row">
-    <div class="stat-item">
-        <span class="stat-val" id="stat-sats">0</span>
-        <span class="stat-label">⚡ Sats</span>
-    </div>
-    <div class="stat-item">
-        <span class="stat-val" id="stat-following">0</span>
-        <span class="stat-label">Siguiendo</span>
-    </div>
-    <div class="stat-item">
-        <span class="stat-val" id="stat-followers">0</span>
-        <span class="stat-label">Seguidores</span>
-    </div>
-</div>
 
-<div class="nav-tabs">
-    <button id="tab-radar" class="tab-btn active">📡 Radar</button>
-    <button id="tab-diario" class="tab-btn">📓 Diario</button>
-</div>
-
-<div id="section-radar" class="tab-content">
-    <div class="form-group">
-        <label>Título del lugar</label>
-        <input type="text" id="poi-name" placeholder="Ej: Café El Cairo">
-    </div>
-    
-    <div class="form-group">
-        <label>Descripción / Reseña</label>
-        <textarea id="poi-desc" rows="3" placeholder="¿Qué hace especial a este sitio?"></textarea>
-    </div>
-
-    <div class="form-group">
-        <label>URL de Imagen (Opcional)</label>
-        <input type="text" id="poi-img" placeholder="https://...">
-    </div>
-    <div class="form-group">
-    <label>Categoría (Obligatorio)</label>
-    <select id="poi-category" required>
-        <option value="" disabled selected>Selecciona una etiqueta...</option>
-        </select>
-    </div>  
-    <button id="btn-anchor" class="btn-primary-action">
-        📍 Anclar mi posición
-    </button>
-</div>
-
-<div id="section-diario" class="tab-content" style="display: none;">
-    <div class="empty-state">
-        <p>No tienes borradores guardados.</p>
-    </div>
-    <div id="drafts-list"></div>
-</div>
-    </div>
-    </div>
     <script type="module" src="/src/main.js"></script>
     
    <div class="test-mode-wrapper debug-independent">
