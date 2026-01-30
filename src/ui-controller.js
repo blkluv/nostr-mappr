@@ -1,106 +1,156 @@
+// ui-controller.js
 import { AuthManager } from './auth.js';
 
-// Elementos del DOM
-const viewAnon = document.getElementById('view-anon');
-const viewConnected = document.getElementById('view-connected'); // ¡Ahora sí existe!
-const tabRadar = document.getElementById('tab-radar');
-const tabDiario = document.getElementById('tab-diario');
-const sectionRadar = document.getElementById('section-radar');
-const sectionDiario = document.getElementById('section-diario');
+// --- ELEMENTOS FLOTANTES ---
+const userNameMini = document.getElementById('user-name-mini');
+const userAvatarMini = document.getElementById('user-avatar-small');
+const userPubkeyMini = document.getElementById('user-pubkey-mini');
 
-// Gestión de Vistas (Invitado <-> Conectado)
-function updateView(isLoggedIn, profile = null) {
-    if (isLoggedIn) {
-        viewAnon.style.display = 'none';
-        viewConnected.style.display = 'block';
+// --- ELEMENTOS DE MODAL ---
+const modalContainer = document.getElementById('modal-container');
+const modalContent = document.getElementById('modal-content');
 
-        window.userPubkey = AuthManager.userPubkey;
-        // Inyectar datos del perfil
-        if (profile) {
-            document.getElementById('profile-name').textContent = profile.display_name || profile.name || "Nostr User";
-            if (profile.picture) document.getElementById('profile-avatar').src = profile.picture;
-            
-            // Hardcodeado por ahora (Stats)
-            document.getElementById('stat-sats').textContent = "24.5K";
-        }
-        
-        // Pubkey acortada
-        const npubShort = AuthManager.userPubkey ? AuthManager.userPubkey.substring(0, 8) + '...' : '...';
-        document.getElementById('profile-pubkey').textContent = '@' + npubShort;
+/* Genera el HTML dinámico para el modal de perfil basado en el estado de sesión. */
 
+function getProfileModalHTML(profile = null) {
+    if (profile) {
+        // VISTA: USUARIO CONECTADO
+        const npubShort = AuthManager.userPubkey.substring(0, 10) + '...';
+        return `
+            <div class="profile-modal-inner">
+                <button class="close-btn" onclick="closeModal()">✕</button>
+                <div class="profile-main-header">
+                    <img src="${profile.picture || 'https://www.gravatar.com/avatar/0?d=mp'}" alt="Avatar" class="large-avatar">
+                    <h2>Hi, ${profile.display_name || profile.name || 'User'}!</h2>
+                    <span class="pubkey-badge">${npubShort}</span>
+                </div>
+
+                <div class="profile-stats-grid">
+                    <div class="stat-box"><strong>24.5K</strong><span>⚡ SATS</span></div>
+                    <div class="stat-box"><strong>${profile.following || 0}</strong><span>SIGUIENDO</span></div>
+                    <div class="stat-box"><strong>${profile.followers || 0}</strong><span>SEGUIDORES</span></div>
+                </div>
+
+                <div class="profile-settings-section">
+                    <p class="profile-bio">${profile.about || 'Sin descripción en Nostr.'}</p>
+                    <button class="btn-settings-item"><i class="fas fa-user-gear"></i> Profile Settings</button>
+                </div>
+
+                <button id="btn-modal-logout" class="btn-logout-modal">CERRAR SESIÓN</button>
+            </div>
+        `;
     } else {
-        viewAnon.style.display = 'block';
-        viewConnected.style.display = 'none';
+        // VISTA: INVITADO
+        return `
+            <div class="profile-modal-inner guest-mode">
+                <button class="close-btn" onclick="closeModal()">✕</button>
+                <div class="guest-header">
+                    <div class="guest-icon-circle"><i class="fas fa-user-secret"></i></div>
+                    <h2>Modo Invitado</h2>
+                    <p>Conecta tu identidad Nostr para empezar a anclar lugares en el mapa.</p>
+                </div>
+                <button id="btn-modal-login" class="btn-login-modal">
+                    <i class="fas fa-key"></i> CONECTAR CON ALBY / NOS2X
+                </button>
+            </div>
+        `;
     }
 }
 
-// Gestión de Pestañas
-function setupTabs() {
-    if (!tabRadar) return; // Validación mínima
+/* Actualiza la información visible en el botón flotante de usuario. */
 
-    tabRadar.addEventListener('click', () => {
-        tabRadar.classList.add('active');
-        tabDiario.classList.remove('active');
-        sectionRadar.style.display = 'block';
-        sectionDiario.style.display = 'none';
-    });
-
-    tabDiario.addEventListener('click', () => {
-        tabDiario.classList.add('active');
-        tabRadar.classList.remove('active');
-        sectionDiario.style.display = 'block';
-        sectionRadar.style.display = 'none';
-    });
+export function updateFloatingUser(profile = null) {
+    if (profile) {
+        userNameMini.textContent = profile.display_name || profile.name || "Usuario";
+        if (profile.picture) userAvatarMini.src = profile.picture;
+        
+        const npubShort = AuthManager.userPubkey ? AuthManager.userPubkey.substring(0, 8) : '...';
+        userPubkeyMini.textContent = '@' + npubShort;
+    } else {
+        userNameMini.textContent = "Invitado";
+        userAvatarMini.src = "https://www.gravatar.com/avatar/0?d=mp";
+        userPubkeyMini.textContent = "@...";
+    }
 }
 
-// Inicialización Pública
-export function initUI(nostrInstance, refreshMapCallback) {
-    setupTabs();
+/**
+ * Abre el contenedor de modales e inyecta el HTML proporcionado.
+ */
+export function openModal(html) {
+    modalContent.innerHTML = html;
+    modalContainer.style.display = 'flex';
+}
 
-    // Listener Login
-    const btnLogin = document.getElementById('btn-login');
-    if (btnLogin) {
-        btnLogin.addEventListener('click', async () => {
-            try {
-                await AuthManager.login();
-                window.userPubkey = AuthManager.userPubkey;
-                const profile = await nostrInstance.getUserProfile(AuthManager.userPubkey);
-                updateView(true, profile);
-                if (refreshMapCallback) refreshMapCallback();
-            } catch (err) {
-                console.error("Login fallido:", err);
+/**
+ * Cierra y limpia el modal.
+ */
+export function closeModal() {
+    modalContainer.style.display = 'none';
+    modalContent.innerHTML = '';
+}
+
+/* Inicializa los eventos de los botones flotantes. */
+
+export function initUI(nostrInstance) {
+    // 1. Referencia al botón (Asegúrate de que el ID coincida con tu HTML)
+    const userBtn = document.getElementById('user-floating-btn'); 
+    const modalContainer = document.getElementById('modal-container');
+
+    if (userBtn) {
+        userBtn.addEventListener('click', async () => {
+            let profile = null;
+            if (AuthManager.isLoggedIn()) {
+                profile = AuthManager.profileCache[AuthManager.userPubkey];
+                if (!profile) profile = await nostrInstance.getUserProfile(AuthManager.userPubkey);
             }
+            
+            openModal(getProfileModalHTML(profile));
+
+            // Listeners internos del modal
+            document.getElementById('btn-modal-login')?.addEventListener('click', async () => {
+                await AuthManager.login();
+                location.reload();
+            });
+
+            document.getElementById('btn-modal-logout')?.addEventListener('click', () => {
+                AuthManager.logout();
+                location.reload();
+            });
+
+            const closeBtn = modalContent.querySelector('.close-btn');
+                if (closeBtn) {
+                closeBtn.onclick = () => closeModal();
+}
         });
     }
 
-    // Listener Logout
-    const btnLogout = document.getElementById('btn-logout');
-    if (btnLogout) {
-    btnLogout.addEventListener('click', () => {
-        console.log("👋 Cerrando sesión y limpiando datos locales...");
-        
-        // 1. Ejecutamos la limpieza en AuthManager (borra el localStorage)
-        AuthManager.logout(); 
-        
-         });
-    }
+    // 2. Click en PoP
+    document.getElementById('btn-quick-pop')?.addEventListener('click', () => {
+        window.dispatchEvent(new CustomEvent('trigger-pop'));
+    });
 
+    // 3. Click en Diario
+    document.getElementById('btn-open-journal')?.addEventListener('click', () => {
+        // Aquí podrías disparar un evento similar al de perfil pero para el diario
+        alert("📓 Próximamente: Tu diario de anclajes");
+    });
+
+    // Cerrar modal al hacer clic fuera
+    modalContainer?.addEventListener('click', (e) => {
+        if (e.target === modalContainer) closeModal();
+    });
+
+    // Actualización inicial del botón flotante
     if (AuthManager.isLoggedIn()) {
         const pubkey = AuthManager.userPubkey;
-        // Buscamos el perfil en caché o en la red para "despertar" la interfaz
         const cachedProfile = AuthManager.profileCache[pubkey];
-        
         if (cachedProfile) {
-            updateView(true, cachedProfile);
+            updateFloatingUser(cachedProfile);
         } else {
-            // Si no está en caché, lo pedimos a Nostr
             nostrInstance.getUserProfile(pubkey).then(profile => {
                 if (profile) {
                     AuthManager.saveProfile(pubkey, profile);
-                    updateView(true, profile);
-                } else {
-                    // Si no hay perfil aún, al menos mostramos la vista conectada con la pubkey
-                    updateView(true);
+                    updateFloatingUser(profile);
                 }
             });
         }

@@ -37,13 +37,6 @@ function iniciarSuscripcion() {
         if (eventosProcesados.has(event.id)) return;
         eventosProcesados.add(event.id);
 
-        let profile = AuthManager.profileCache[event.pubkey];
-        
-        if (!profile) {
-            profile = await nostr.getUserProfile(event.pubkey);
-            if (profile) AuthManager.saveProfile(event.pubkey, profile);
-        }
-
         const name = AuthManager.getDisplayName(event.pubkey);
 
         const hash = GeoLogic.getHashFromEvent(event);
@@ -51,7 +44,7 @@ function iniciarSuscripcion() {
             const { lat, lon } = GeoLogic.decode(hash);
             const tagCat = event.tags.find(t => t[0] === 't' && t[1] !== 'spatial_anchor');
             const categoriaEvento = tagCat ? tagCat[1] : 'todos';
-            const popupHTML = map.createPopupHTML(event, profile, categoriaEvento);
+            const popupHTML = map.createPopupHTML(event, null, categoriaEvento);
             map.addMarker(event.id, lat, lon, popupHTML, categoriaEvento);
         }
     });
@@ -66,7 +59,7 @@ map.getCurrentLocation()
     .catch(err => console.warn("Usando ubicación por defecto:", err));
 
 
-initUI(nostr, iniciarSuscripcion);
+initUI(nostr);
 
 
 window.followUser = async (pubkey, name) => {
@@ -123,7 +116,6 @@ map.map.on('popupopen', (e) => {
 
         if (miPubkey && miPubkey === pubkeyPunto) {
             container.classList.add('is-owner');
-            console.log("🛠️ Eres el dueño. Botón de borrado habilitado.");
         }
     }
 });
