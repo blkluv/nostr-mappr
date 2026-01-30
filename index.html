@@ -35,9 +35,30 @@
 
 <button id="btn-locate-me" title="Centrar en mi ubicación"> <i class="fas fa-crosshairs"></i> </button>
     
+    <div id="user-floating-btn" class="glass-panel-mini floating-btn">
+    <img id="user-avatar-small" src="https://www.gravatar.com/avatar/0?d=mp" alt="User">
+    <div class="user-info-mini">
+        <span id="user-name-mini">Invitado</span>
+        <span id="user-pubkey-mini">@...</span>
+    </div>
+</div>
 
+<div id="side-actions-container">
+    <button id="btn-open-journal" class="action-fab glass-panel-mini" title="Diario">
+        <i class="fas fa-book"></i>
+        <span>Diario</span>
+    </button>
+    
+    <button id="btn-quick-pop" class="action-fab pop-btn" title="Proof of Presence">
+        <i class="fas fa-thumbtack"></i>
+        <span>PoP</span>
+    </button>
+</div>
 
-
+<div id="modal-container" class="modal-overlay" style="display: none;">
+    <div id="modal-content" class="modal-card glass-panel-modal">
+        </div>
+</div>
 
     <script type="module" src="/src/main.js"></script>
     
