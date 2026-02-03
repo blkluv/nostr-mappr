@@ -799,3 +799,29 @@ input:checked + .test-slider:before { transform: translateX(16px); }
     cursor: pointer;
     font-size: 12px;
 }
+
+.draft-modal-card {
+    position: relative; 
+    background: white;
+    padding: 30px;
+    border-radius: 28px;
+    width: 100%;
+    text-align: left; 
+}
+
+.close-btn-alt {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: none;
+    border: none;
+    font-size: 22px;
+    color: #aaa;
+    cursor: pointer;
+    line-height: 1;
+    z-index: 10;
+}
+
+.close-btn-alt:hover {
+    color: #666;
+}

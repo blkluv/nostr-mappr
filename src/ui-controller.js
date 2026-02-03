@@ -56,6 +56,34 @@ function getProfileModalHTML(profile = null) {
         `;
     }
 }
+// ui-controller.js
+export function getDraftModalHTML(lat, lng) {
+    return `
+        <div class="profile-modal-inner draft-modal">
+            <button class="close-btn" id="btn-close-draft">✕</button>
+            <div class="profile-main-header">
+                <h2 style="margin-top: 10px;">Anclaje Provisorio</h2>
+                <span class="pubkey-badge">📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}</span>
+            </div>
+
+            <div class="form-group" style="width: 100%; text-align: left;">
+                <label>TÍTULO DEL LUGAR</label>
+                <input type="text" id="draft-title" placeholder="Ej: Café de la Esquina..." 
+                       style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); margin-top: 5px;">
+            </div>
+
+            <div class="photo-upload-zone" style="width: 100%; border: 2px dashed rgba(88, 81, 219, 0.3); padding: 20px; border-radius: 20px; text-align: center; cursor: pointer; background: rgba(255,255,255,0.3);">
+                <i class="fas fa-camera" style="font-size: 24px; color: #8e44ad; margin-bottom: 10px;"></i>
+                <p style="font-size: 11px; font-weight: bold; color: #8e44ad; margin: 0;">SUBIR O TOMAR FOTO</p>
+                <input type="file" id="draft-photo" accept="image/*" style="display: none;">
+            </div>
+
+            <button id="btn-save-draft" class="btn-primary">
+                GUARDAR EN DIARIO
+            </button>
+        </div>
+    `;
+}
 
 /* Actualiza la información visible en el botón flotante de usuario. */
 

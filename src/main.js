@@ -3,7 +3,7 @@ import { MapManager } from './ui-map.js';
 import { NostrService } from './nostr-service.js';
 import { GeoLogic } from './geo-utils.js';
 import { AuthManager } from './auth.js';
-import { initUI } from './ui-controller.js';
+import { initUI, openModal, closeModal, getDraftModalHTML } from './ui-controller.js';
 import { initFilters } from './filter-controller.js';
 import { initAnchor } from './anchor-controller.js';
 import { initSearch } from './search-controller.js';
@@ -192,6 +192,54 @@ window.abrirModalResena = (lat, lng) => {
 };
 
 window.abrirModalBorrador = (lat, lng) => {
-    // Aquí llamaremos al modal de "Anclaje Provisorio" que diseñaremos a continuación
-    alert("Guardando como borrador rápido...");
-};
+    if (window.map && window.map.map) window.map.map.closePopup();
+    openModal(getDraftModalHTML(lat, lng));
+
+    // 1. Vincular Cierre
+    document.getElementById('btn-close-draft').onclick = () => closeModal();
+
+    // 2. Lógica de Selección de Imagen
+    const uploadZone = document.querySelector('.photo-upload-zone');
+    const fileInput = document.getElementById('draft-photo');
+
+    // Al hacer clic en el recuadro, abrimos el selector de archivos
+    uploadZone.onclick = () => fileInput.click();
+
+    // Cuando el usuario elige una foto
+    fileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                // Reemplazamos el icono por la previsualización de la imagen
+                uploadZone.innerHTML = `
+                    <img src="${event.target.result}" 
+                         style="width: 100%; max-height: 150px; object-fit: cover; border-radius: 12px;">
+                `;
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    // 3. Lógica de Guardado (Modificada para incluir la imagen)
+    document.getElementById('btn-save-draft').onclick = () => {
+        const title = document.getElementById('draft-title').value;
+        const photo = fileInput.files[0]; // Capturamos el archivo real
+
+        if (!title) return alert("Por favor, ponle un nombre al lugar.");
+
+        const nuevoBorrador = {
+            id: Date.now(),
+            lat, lng,
+            titulo: title,
+            // Guardamos la referencia o la miniatura si quisiéramos
+            fecha: new Date().toISOString()
+        };
+
+        // LLAMADA AL STORAGE (Lo que haremos a continuación)
+        guardarBorradorEnLocalStorage(nuevoBorrador);
+        
+        closeModal();
+        if (window.tempPoPMarker) window.map.map.removeLayer(window.tempPoPMarker);
+    };
+};;
