@@ -198,48 +198,59 @@ window.abrirModalBorrador = (lat, lng) => {
     // 1. Vincular Cierre
     document.getElementById('btn-close-draft').onclick = () => closeModal();
 
-    // 2. Lógica de Selección de Imagen
-    const uploadZone = document.querySelector('.photo-upload-zone');
     const fileInput = document.getElementById('draft-photo');
+    const previewContainer = document.getElementById('preview-container');
+    const uploadZone = document.getElementById('upload-zone');
 
-    // Al hacer clic en el recuadro, abrimos el selector de archivos
     uploadZone.onclick = () => fileInput.click();
+    
+    // Almacenaremos las imágenes en Base64 para el borrador
+    let imagesBase64 = [];
 
-    // Cuando el usuario elige una foto
     fileInput.onchange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
+        const files = Array.from(e.target.files); // Convertimos la lista de archivos a un Array
+        
+        files.forEach(file => {
             const reader = new FileReader();
             reader.onload = (event) => {
-                // Reemplazamos el icono por la previsualización de la imagen
-                uploadZone.innerHTML = `
-                    <img src="${event.target.result}" 
-                         style="width: 100%; max-height: 150px; object-fit: cover; border-radius: 12px;">
-                `;
+                const base64 = event.target.result;
+                imagesBase64.push(base64);
+
+                // Crear miniatura visual
+                const imgThumb = document.createElement('img');
+                imgThumb.src = base64;
+                imgThumb.style.cssText = "width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px solid #8e44ad;";
+                previewContainer.appendChild(imgThumb);
             };
             reader.readAsDataURL(file);
-        }
+        });
+
+        // Ocultamos el icono original para dejar espacio a las fotos
+        uploadZone.querySelector('i').style.display = 'none';
+        uploadZone.querySelector('p').textContent = `${files.length} fotos seleccionadas`;
     };
 
-    // 3. Lógica de Guardado (Modificada para incluir la imagen)
+    // Al guardar, incluimos el array de imágenes
     document.getElementById('btn-save-draft').onclick = () => {
         const title = document.getElementById('draft-title').value;
-        const photo = fileInput.files[0]; // Capturamos el archivo real
-
-        if (!title) return alert("Por favor, ponle un nombre al lugar.");
+        if (!title) return alert("Por favor, ponle un nombre.");
 
         const nuevoBorrador = {
             id: Date.now(),
             lat, lng,
             titulo: title,
-            // Guardamos la referencia o la miniatura si quisiéramos
+            imagenes: imagesBase64, // Guardamos todas las fotos
             fecha: new Date().toISOString()
         };
 
-        // LLAMADA AL STORAGE (Lo que haremos a continuación)
-        guardarBorradorEnLocalStorage(nuevoBorrador);
-        
+        guardarBorradorEnLocalStorage(nuevoBorrador); //
         closeModal();
-        if (window.tempPoPMarker) window.map.map.removeLayer(window.tempPoPMarker);
     };
-};;
+};
+
+function guardarBorradorEnLocalStorage(borrador) {
+    const borradores = JSON.parse(localStorage.getItem('diario_borradores')) || [];
+    borradores.push(borrador);
+    localStorage.setItem('diario_borradores', JSON.stringify(borradores));
+    alert(`✅ "${borrador.titulo}" guardado en el Diario.`);
+}
