@@ -56,7 +56,7 @@ function getProfileModalHTML(profile = null) {
         `;
     }
 }
-// ui-controller.js
+
 export function getDraftModalHTML(lat, lng) {
     return `
         <div class="profile-modal-inner draft-modal">
@@ -102,20 +102,73 @@ export function updateFloatingUser(profile = null) {
     }
 }
 
-/**
- * Abre el contenedor de modales e inyecta el HTML proporcionado.
- */
+/* Abre el contenedor de modales e inyecta el HTML proporcionado. */
 export function openModal(html) {
     modalContent.innerHTML = html;
     modalContainer.style.display = 'flex';
 }
 
-/**
- * Cierra y limpia el modal.
- */
+/* Cierra y limpia el modal. */
 export function closeModal() {
     modalContainer.style.display = 'none';
     modalContent.innerHTML = '';
+}
+
+/* Genera el HTML dinámico para el modal del diario de anclajes. */
+
+export function getJournalModalHTML(eventosBorrador = []) {
+    const filas = eventosBorrador.map(ev => {
+        const titulo = ev.tags.find(t => t[0] === 'title')?.[1] || 'Sin título';
+        const coords = ev.tags.find(t => t[0] === 'g')?.[1] || '0,0';
+        const [lat, lng] = coords.split(',');
+        const fecha = new Date(ev.created_at * 1000).toLocaleDateString();
+
+        return `
+            <tr>
+                <td class="journal-date">${fecha}</td>
+                <td style="font-weight: 700;">${titulo}</td>
+                <td>
+                    <a href="#" class="geo-link" onclick="window.centrarMapa(${lat}, ${lng})" 
+                       style="display: flex; align-items: center; gap: 6px; color: #5851db; text-decoration: none; font-weight: 700;">
+                        <i class="fas fa-map-marker-alt"></i> Ver
+                    </a>
+                </td>
+                <td style="color: #999;">-</td>
+                <td class="journal-status-text">Anclado</td>
+                <td>
+                    <div class="actions-row">
+                        <button class="btn-action-icon" onclick="window.completarAnclaje('${ev.id}')">🚀</button>
+                        <button class="btn-action-icon" onclick="window.borrarBorrador('${ev.id}')">🗑️</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    return `
+        <div class="profile-modal-inner journal-modal-content">
+            <button class="close-btn" id="btn-close-journal">✕</button>
+            <h2 style="font-size: 24px; font-weight: 800; color: #1a1a1a; align-self: center;">Diario de anclajes</h2>
+            
+            <div class="journal-white-container">
+                <table class="journal-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Título</th>
+                            <th>Ubicación</th>
+                            <th>Categoría</th>
+                            <th>Estado</th>
+                            <th style="text-align: center;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filas || '<tr><td colspan="6" style="text-align:center; padding: 40px; color: #999;">Aún no tienes registros.</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
 }
 
 /* Inicializa los eventos de los botones flotantes. */
@@ -178,9 +231,22 @@ export function initUI(nostrInstance) {
     });
 
     // 3. Click en Diario
-    document.getElementById('btn-open-journal')?.addEventListener('click', () => {
-        // Aquí podrías disparar un evento similar al de perfil pero para el diario
-        alert("📓 Próximamente: Tu diario de anclajes");
+    document.getElementById('btn-open-journal')?.addEventListener('click', async () => {
+        if (!AuthManager.isLoggedIn()) {
+            alert("Debes conectar tu identidad Nostr para ver tu Diario.");
+            return;
+        }
+
+        // Abrimos el modal con un estado de carga inicial
+        openModal(getJournalModalHTML([])); 
+        
+        // Llamamos a la función global que definiremos en main.js
+        if (window.cargarYMostrarDiario) {
+            window.cargarYMostrarDiario();
+        }
+
+        const closeBtn = document.getElementById('btn-close-journal');
+        if (closeBtn) closeBtn.onclick = () => closeModal();
     });
 
     // Cerrar modal al hacer clic fuera

@@ -825,3 +825,71 @@ input:checked + .test-slider:before { transform: translateX(16px); }
 .close-btn-alt:hover {
     color: #666;
 }
+
+/* Estilos modal Diario*/
+
+/* Contenedor principal que flota sobre el mapa */
+.journal-modal-content {
+    max-width: 850px !important;
+    width: 95% !important;
+    padding: 25px !important;
+    background: rgba(255, 255, 255, 0.45) !important;
+    backdrop-filter: blur(10px);
+}
+
+/* El recuadro blanco único que contiene la tabla */
+.journal-white-container {
+    background: white;
+    border-radius: 20px;
+    padding: 10px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    margin-top: 20px;
+}
+
+.journal-table {
+    width: 100%;
+    border-collapse: collapse; /* Para que las líneas divisorias sean una sola */
+}
+
+/* Títulos con el violeta de la app y línea divisoria */
+.journal-table th {
+    padding: 15px 10px;
+    text-align: left;
+    font-size: 14px;
+    font-weight: 700;
+    color: #5851db; 
+    border-bottom: 1px solid rgba(88, 81, 219, 0.4); /* Línea del mismo color de fuente */
+}
+
+/* Celdas de datos con centrado vertical y línea divisoria suave */
+.journal-table td {
+    padding: 15px 10px;
+    vertical-align: middle;
+    border-bottom: 1px solid rgba(88, 81, 219, 0.2);
+    color: #333;
+    font-size: 14px;
+}
+
+/* Fecha y Estado: Misma fuente y tamaño */
+.journal-date, .journal-status-text {
+    font-size: 13px !important;
+    color: #666;
+}
+
+/* Alineación horizontal de las acciones */
+.actions-row {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.btn-action-icon {
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-size: 18px;
+    padding: 5px;
+    transition: transform 0.2s;
+}
+
+.btn-action-icon:hover { transform: scale(1.2); }

@@ -106,4 +106,27 @@ async publish(event) {
     }
 }
 
+async fetchEvents(filter) {
+    try {
+        // querySync es el método estándar de nostr-tools (SimplePool) para obtener una lista única
+        return await this.pool.querySync(this.relays, filter);
+    } catch (err) {
+        console.error("Error al consultar eventos:", err);
+        return [];
+    }
+}
+
+async publishEvent(event) {
+    try {
+        // Pedimos firma a la extensión (Alby/Nos2x)
+        const signedEvent = await window.nostr.signEvent(event);
+        // Publicamos en los relays
+        await Promise.all(this.pool.publish(this.relays, signedEvent));
+        return true;
+    } catch (err) {
+        console.error("Fallo al publicar:", err);
+        return false;
+    }
+}
+
 }

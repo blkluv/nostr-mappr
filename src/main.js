@@ -3,7 +3,7 @@ import { MapManager } from './ui-map.js';
 import { NostrService } from './nostr-service.js';
 import { GeoLogic } from './geo-utils.js';
 import { AuthManager } from './auth.js';
-import { initUI, openModal, closeModal, getDraftModalHTML } from './ui-controller.js';
+import { initUI, openModal, closeModal, getDraftModalHTML, getJournalModalHTML } from './ui-controller.js';
 import { initFilters } from './filter-controller.js';
 import { initAnchor } from './anchor-controller.js';
 import { initSearch } from './search-controller.js';
@@ -192,65 +192,141 @@ window.abrirModalResena = (lat, lng) => {
 };
 
 window.abrirModalBorrador = (lat, lng) => {
+    // 1. Cerramos cualquier popup abierto en el mapa para limpiar la vista
     if (window.map && window.map.map) window.map.map.closePopup();
+    
+    // 2. Abrimos el modal con la estructura de borrador
     openModal(getDraftModalHTML(lat, lng));
 
-    // 1. Vincular Cierre
-    document.getElementById('btn-close-draft').onclick = () => closeModal();
+    // 3. Vinculamos el botón de cierre (X)
+    const closeBtn = document.getElementById('btn-close-draft');
+    if (closeBtn) closeBtn.onclick = () => closeModal();
 
+    // 4. Configuración de la zona de fotos
     const fileInput = document.getElementById('draft-photo');
     const previewContainer = document.getElementById('preview-container');
     const uploadZone = document.getElementById('upload-zone');
+    let imagesBase64 = []; // Almacén temporal de fotos seleccionadas
 
-    uploadZone.onclick = () => fileInput.click();
-    
-    // Almacenaremos las imágenes en Base64 para el borrador
-    let imagesBase64 = [];
+    if (uploadZone && fileInput) {
+        uploadZone.onclick = () => fileInput.click();
 
-    fileInput.onchange = (e) => {
-        const files = Array.from(e.target.files); // Convertimos la lista de archivos a un Array
-        
-        files.forEach(file => {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const base64 = event.target.result;
-                imagesBase64.push(base64);
+        fileInput.onchange = (e) => {
+            const files = Array.from(e.target.files);
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const base64 = event.target.result;
+                    imagesBase64.push(base64);
 
-                // Crear miniatura visual
-                const imgThumb = document.createElement('img');
-                imgThumb.src = base64;
-                imgThumb.style.cssText = "width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px solid #8e44ad;";
-                previewContainer.appendChild(imgThumb);
-            };
-            reader.readAsDataURL(file);
-        });
+                    // Renderizado de miniatura en el modal
+                    const imgThumb = document.createElement('img');
+                    imgThumb.src = base64;
+                    imgThumb.style.cssText = "width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px solid #8e44ad; margin-bottom: 5px;";
+                    previewContainer.appendChild(imgThumb);
+                };
+                reader.readAsDataURL(file);
+            });
 
-        // Ocultamos el icono original para dejar espacio a las fotos
-        uploadZone.querySelector('i').style.display = 'none';
-        uploadZone.querySelector('p').textContent = `${files.length} fotos seleccionadas`;
-    };
-
-    // Al guardar, incluimos el array de imágenes
-    document.getElementById('btn-save-draft').onclick = () => {
-        const title = document.getElementById('draft-title').value;
-        if (!title) return alert("Por favor, ponle un nombre.");
-
-        const nuevoBorrador = {
-            id: Date.now(),
-            lat, lng,
-            titulo: title,
-            imagenes: imagesBase64, // Guardamos todas las fotos
-            fecha: new Date().toISOString()
+            // Actualización visual del contador de fotos
+            const icon = uploadZone.querySelector('i');
+            const label = uploadZone.querySelector('p');
+            if (icon) icon.style.display = 'none';
+            if (label) label.textContent = `${files.length} fotos seleccionadas`;
         };
+    }
 
-        guardarBorradorEnLocalStorage(nuevoBorrador); //
-        closeModal();
-    };
+    // 5. Lógica de GUARDADO Y FIRMA DIRECTA (Kind 30024)
+    const btnSave = document.getElementById('btn-save-draft');
+    if (btnSave) {
+        btnSave.onclick = async () => {
+            const titleInput = document.getElementById('draft-title');
+            const title = titleInput ? titleInput.value.trim() : "";
+
+            if (!title) {
+                alert("Por favor, ponle un nombre al lugar.");
+                return;
+            }
+
+            // Efecto visual de carga y firma
+            const originalHTML = btnSave.innerHTML;
+            btnSave.innerHTML = '<i class="fas fa-spinner fa-spin"></i> FIRMANDO...';
+            btnSave.disabled = true;
+
+            try {
+                // Construcción del evento de borrador bajo estándar Nostr
+                const eventoBorrador = {
+                    kind: 30024,
+                    content: `Borrador de anclaje creado desde la app.`,
+                    tags: [
+                        ["d", `anchor_${Date.now()}`],      // Identificador único
+                        ["title", title],                  // Título para la tabla del diario
+                        ["g", `${lat},${lng}`],            // Coordenadas geográficas
+                        ["t", "spatial_anchor"]            // Tag para filtrado en relays
+                    ],
+                    created_at: Math.floor(Date.now() / 1000)
+                };
+
+                // NOTA: Si imagesBase64 tiene datos, el lunes implementaremos NIP-94 aquí
+                
+                // Firmar y enviar directamente a los Relays configurados
+                const exito = await nostr.publishEvent(eventoBorrador);
+
+                if (exito) {
+                    alert(`✅ "${title}" firmado y guardado en tu Diario (Nostr).`);
+                    closeModal();
+                    // Limpiamos el marcador temporal del mapa si existe
+                    if (window.tempPoPMarker) window.map.map.removeLayer(window.tempPoPMarker);
+                } else {
+                    throw new Error("Firma rechazada");
+                }
+
+            } catch (err) {
+                console.error("Error en el proceso de firma:", err);
+                alert("❌ No se pudo firmar el borrador. Verifica tu extensión (Alby/Nos2x).");
+                btnSave.innerHTML = originalHTML;
+                btnSave.disabled = false;
+            }
+        };
+    }
 };
 
-function guardarBorradorEnLocalStorage(borrador) {
-    const borradores = JSON.parse(localStorage.getItem('diario_borradores')) || [];
-    borradores.push(borrador);
-    localStorage.setItem('diario_borradores', JSON.stringify(borradores));
-    alert(`✅ "${borrador.titulo}" guardado en el Diario.`);
-}
+// main.js
+
+window.cargarYMostrarDiario = async () => {
+    const pubkey = AuthManager.userPubkey;
+    const bodyTabla = document.querySelector('.journal-table tbody');
+    
+    if (bodyTabla) {
+        bodyTabla.innerHTML = '<tr><td colspan="6"><i class="fas fa-spinner fa-spin"></i> Consultando Relays...</td></tr>';
+    }
+
+    try {
+        // Consultamos a los relays por eventos Kind 30024 de nuestra autoría
+        const filtros = {
+            kinds: [30024],
+            authors: [pubkey],
+            "#t": ["spatial_anchor"] // Filtramos solo nuestros anclajes
+        };
+
+        const eventosBorradores = await nostr.fetchEvents(filtros);
+
+        // Actualizamos el modal con los datos reales
+        openModal(getJournalModalHTML(eventosBorradores));
+
+        // Re-vinculamos el cierre porque openModal refresca el contenido
+        document.getElementById('btn-close-journal').onclick = () => closeModal();
+
+    } catch (err) {
+        console.error("Error al cargar el diario:", err);
+        if (bodyTabla) {
+            bodyTabla.innerHTML = '<tr><td colspan="6">Error al conectar con los relays.</td></tr>';
+        }
+    }
+};
+
+// Función auxiliar para que el botón "📍 Ver" de la tabla funcione
+window.centrarMapa = (lat, lng) => {
+    closeModal();
+    window.map.setView(lat, lng, 16);
+};
