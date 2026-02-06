@@ -225,10 +225,31 @@ input:focus, textarea:focus {
     transition: all 0.7s ease-in-out;
 }
 
-.btn-delete.owner-only {
-    display: none;
+
+.btn-delete {
     background-color: #ff4d4d;
     color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+.btn-delete:hover {
+    background-color: #ff3333;
+}
+
+/* Ajuste para el contenedor de acciones en popups */
+.popup-actions {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+}
+
+.btn-delete.owner-only {
+    display: none;
 }
 
 .is-owner .btn-delete.owner-only {
@@ -803,15 +824,6 @@ input:checked + .test-slider:before { transform: translateX(16px); }
     font-size: 12px;
 }
 
-.draft-modal-card {
-    position: relative; 
-    background: white;
-    padding: 30px;
-    border-radius: 28px;
-    width: 100%;
-    text-align: left; 
-}
-
 .close-btn-alt {
     position: absolute;
     top: 20px;
@@ -888,3 +900,58 @@ input:checked + .test-slider:before { transform: translateX(16px); }
 }
 
 .btn-action-icon:hover { transform: scale(1.2); }
+
+.draft-marker-orange {
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.2));
+    transition: transform 0.2s;
+}
+
+.draft-marker-orange:hover {
+    transform: scale(1.2);
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+}
+
+/* style.css */
+
+/* Contenedor del popup para pines naranjas */
+.draft-popup-container {
+    padding: 5px;
+    min-width: 180px;
+    text-align: center;
+}
+
+.draft-popup-title {
+    margin: 0 0 8px 0;
+    color: #1a1a1a;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.draft-popup-status {
+    font-size: 11px;
+    color: #666;
+    margin-bottom: 15px;
+    display: block;
+}
+
+/* Grilla de botones en el popup */
+.draft-popup-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+
+.btn-draft-delete {
+    background: #fff;
+    color: #e74c3c;
+    border: 1px solid #e74c3c;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.2s;
+}
+
+.btn-draft-publish:hover { opacity: 0.9; }
+.btn-draft-delete:hover { background: #fff5f5; }

@@ -81,7 +81,7 @@ createPopupHTML(event, profile, categoriaId = 'general') {
                 <button onclick="window.borrarPunto('${event.id}')" 
                         class="btn-popup btn-delete owner-only" 
                         data-owner="${event.pubkey}">
-                        🗑️ Borrar
+                        🗑️ Delete
                 </button>
             </div>
         </div>

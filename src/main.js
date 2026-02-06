@@ -321,16 +321,38 @@ window.fetchAndShowJournal = async () => {
 
         draftEvents.forEach(ev => {
             const coordsTag = ev.tags.find(t => t[0] === 'g')?.[1];
+            const title = ev.tags.find(t => t[0] === 'title')?.[1] || 'Untitled Draft';
+
             if (coordsTag) {
                 const [lat, lng] = coordsTag.split(',');
                 
-                L.marker([parseFloat(lat), parseFloat(lng)], {
+                const marker = L.marker([parseFloat(lat), parseFloat(lng)], {
                     icon: L.divIcon({
                         className: 'draft-marker-orange',
                         html: `<i class="fas fa-thumbtack" style="color: rgba(255, 165, 0, 0.65); font-size: 25px;"></i>`,
                         iconAnchor: [12, 25]
                     })
-                }).addTo(window.journalLayerGroup);
+                })
+                
+                const popupContent = `
+                    <div class="popup-container">
+                        <div class="popup-user-info">
+                            <span class="popup-category-badge">Draft</span>
+                            <strong class="popup-username">${title}</strong>
+                        </div>
+                        <div class="popup-actions" style="margin-top: 15px;">
+                            <button onclick="window.completeAnchor('${ev.id}')" class="btn-popup btn-follow">
+                                <i class="fas fa-rocket"></i> Publish
+                            </button>
+                            <button onclick="window.deleteDraft('${ev.id}')" class="btn-popup btn-delete" style="display: block;">
+                                🗑️ Delete
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                marker.bindPopup(popupContent);
+                marker.addTo(window.journalLayerGroup);
             }
         });
 
@@ -367,3 +389,35 @@ window.centerMapAndHighlight = (lat, lng) => {
     }).addTo(window.map.map);
 };
 
+// main.js
+
+/* Global function to handle draft deletion from popups or the journal table. */
+window.deleteDraft = async (eventId) => {
+    // 1. Confirmación con el usuario
+    if (!confirm("Are you sure you want to delete this draft from the Nostr network?")) return;
+
+    try {
+        // 2. Usamos el servicio de borrado (Kind 5) definido en nostr-service.js
+        const success = await nostr.deleteEvent(eventId); 
+
+        if (success) {
+            alert("✅ Draft deleted successfully.");
+            // 3. Refrescamos el diario para actualizar tabla y mapa
+            window.fetchAndShowJournal(); 
+        } else {
+            alert("❌ Failed to delete the draft. Please try again.");
+        }
+    } catch (err) {
+        console.error("Error deleting draft:", err);
+        alert("❌ An error occurred during deletion.");
+    }
+};
+
+/**
+ * Global function to handle the transition from Draft (30024) to Public Anchor (1).
+ */
+window.completeAnchor = (eventId) => {
+    console.log("Initiating publication for event:", eventId);
+    // Esta lógica la desarrollaremos el lunes para subir imágenes y firmar el Kind 1
+    alert("Publishing feature will be available on Monday!");
+};
