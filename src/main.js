@@ -380,13 +380,6 @@ window.centerMapAndHighlight = (lat, lng) => {
         window.map.map.removeLayer(window.tempHighlightMarker);
     }
 
-    window.tempHighlightMarker = L.marker([lat, lng], {
-        icon: L.divIcon({
-            className: 'highlight-pin',
-            html: '<i class="fas fa-thumbtack" style="color: #3498db; font-size: 30px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));"></i>',
-            iconAnchor: [15, 30]
-        })
-    }).addTo(window.map.map);
 };
 
 // main.js

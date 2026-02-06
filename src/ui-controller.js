@@ -128,7 +128,7 @@ export function getJournalModalHTML(eventosBorrador = []) {
                 <td class="journal-date">${fecha}</td>
                 <td style="font-weight: 700;">${titulo}</td>
                 <td>
-                    <a href="#" class="geo-link" onclick="window.centrarMapa(${lat}, ${lng})" 
+                    <a href="#" class="geo-link" onclick="window.centerMapAndHighlight(${lat}, ${lng})" 
                        style="display: flex; align-items: center; gap: 6px; color: #5851db; text-decoration: none; font-weight: 700;">
                         <i class="fas fa-map-marker-alt"></i> Ver
                     </a>
@@ -137,8 +137,8 @@ export function getJournalModalHTML(eventosBorrador = []) {
                 <td class="journal-status-text">Anclado</td>
                 <td>
                     <div class="actions-row">
-                        <button class="btn-action-icon" onclick="window.completarAnclaje('${ev.id}')">🚀</button>
-                        <button class="btn-action-icon" onclick="window.borrarBorrador('${ev.id}')">🗑️</button>
+                        <button class="btn-action-icon" onclick="window.completeAnchor('${ev.id}')">🚀</button>
+                        <button class="btn-action-icon" onclick="window.deleteDraft('${ev.id}')">🗑️</button>
                     </div>
                 </td>
             </tr>
