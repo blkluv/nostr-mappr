@@ -7,6 +7,7 @@ import { initUI, openModal, closeModal, getDraftModalHTML, getJournalModalHTML }
 import { initFilters } from './filter-controller.js';
 import { initAnchor } from './anchor-controller.js';
 import { initSearch } from './search-controller.js';
+import { JournalManager } from './journal-manager.js';
 
 // --- CONFIGURACIÓN ---
 const RELAYS = ['wss://nos.lol', 'wss://relay.primal.net', 'wss://relay.damus.io']; 
@@ -25,6 +26,13 @@ initSearch(map);
 initFilters(map);
 
 const nostr = new NostrService(RELAYS);
+
+const journal = new JournalManager(map, nostr);
+
+// Exportamos funciones para que el HTML (onclick) las encuentre
+window.fetchAndShowJournal = () => journal.openJournal();
+window.deleteDraft = (id) => journal.deleteDraft(id);
+window.syncDrafts = () => journal.syncDrafts();
 
 initAnchor(map, nostr);
 
@@ -52,6 +60,9 @@ function iniciarSuscripcion() {
 
 // Llamada inicial
 iniciarSuscripcion();
+
+// Carga borradores automáticamente
+journal.syncDrafts();
 
 // centrar mapa por GPS al inicio
 map.getCurrentLocation()
@@ -153,22 +164,17 @@ window.borrarPunto = async (eventId) => {
     }
 };
 
+
 window.addEventListener('trigger-pop', (e) => {
     const { lat, lng } = e.detail;
-
-    // Centramos el mapa en el usuario para que vea su marcador
     window.map.setView(lat, lng, 18);
 
     if (window.tempPoPMarker) window.map.map.removeLayer(window.tempPoPMarker);
 
-    // El marcador ahora es FIJO (draggable: false) para asegurar presencia
+    // Creamos el marcador usando el nuevo estilo 'temp' (Violeta)
     window.tempPoPMarker = L.marker([lat, lng], {
         draggable: false, 
-        icon: L.divIcon({
-            className: 'pop-temp-marker',
-            html: '<i class="fas fa-thumbtack" style="color: #8e44ad; font-size: 30px;"></i>',
-            iconAnchor: [15, 30]
-        })
+        icon: window.map._createIcon('temp') 
     }).addTo(window.map.map);
 
     window.tempPoPMarker.bindPopup(`
@@ -176,12 +182,8 @@ window.addEventListener('trigger-pop', (e) => {
         <strong>📍 Ubicación Confirmada</strong>
         <p>Estás aquí. ¿Cómo quieres registrar este punto?</p>
         <div class="pop-btn-grid">
-            <button onclick="window.abrirModalResena(${lat}, ${lng})" class="btn-pop-resena">
-                📝 Reseña
-            </button>
-            <button onclick="window.abrirModalBorrador(${lat}, ${lng})" class="btn-pop-draft">
-                💾 Borrador
-            </button>
+            <button onclick="window.abrirModalResena(${lat}, ${lng})" class="btn-pop-resena">📝 Reseña</button>
+            <button onclick="window.abrirModalBorrador(${lat}, ${lng})" class="btn-pop-draft">💾 Borrador</button>
         </div>
     </div>
 `, { closeButton: false, offset: [0, -10] }).openPopup();
@@ -273,6 +275,7 @@ window.abrirModalBorrador = (lat, lng) => {
                 const exito = await nostr.publishEvent(eventoBorrador);
 
                 if (exito) {
+                    journal.syncDrafts();
                     alert(`✅ "${title}" firmado y guardado en tu Diario (Nostr).`);
                     closeModal();
                     // Limpiamos el marcador temporal del mapa si existe
@@ -291,85 +294,7 @@ window.abrirModalBorrador = (lat, lng) => {
     }
 };
 
-/*  Fetches Kind 30024 events from Nostr relays and populates the Journal table.
-    Also renders semi-transparent orange markers on the map for these drafts. */
 
-window.fetchAndShowJournal = async () => {
-    const pubkey = AuthManager.userPubkey;
-    const tableBody = document.querySelector('.journal-table tbody');
-    
-    // 1. Visual feedback while loading
-    if (tableBody) {
-        tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 40px;"><i class="fas fa-spinner fa-spin"></i> Fetching from Relays...</td></tr>';
-    }
-
-    try {
-        // 2. Define filter for Kind 30024 (Drafts) owned by the user
-        const filters = {
-            kinds: [30024],
-            authors: [pubkey],
-            "#t": ["spatial_anchor"]
-        };
-
-        const draftEvents = await nostr.fetchEvents(filters);
-
-        // 3. Map Management: Draw orange markers (65% opacity)
-        if (window.journalLayerGroup) {
-            window.map.map.removeLayer(window.journalLayerGroup);
-        }
-        window.journalLayerGroup = L.layerGroup().addTo(window.map.map);
-
-        draftEvents.forEach(ev => {
-            const coordsTag = ev.tags.find(t => t[0] === 'g')?.[1];
-            const title = ev.tags.find(t => t[0] === 'title')?.[1] || 'Untitled Draft';
-
-            if (coordsTag) {
-                const [lat, lng] = coordsTag.split(',');
-                
-                const marker = L.marker([parseFloat(lat), parseFloat(lng)], {
-                    icon: L.divIcon({
-                        className: 'draft-marker-orange',
-                        html: `<i class="fas fa-thumbtack" style="color: rgba(255, 165, 0, 0.65); font-size: 25px;"></i>`,
-                        iconAnchor: [12, 25]
-                    })
-                })
-                
-                const popupContent = `
-                    <div class="popup-container">
-                        <div class="popup-user-info">
-                            <span class="popup-category-badge">Draft</span>
-                            <strong class="popup-username">${title}</strong>
-                        </div>
-                        <div class="popup-actions" style="margin-top: 15px;">
-                            <button onclick="window.completeAnchor('${ev.id}')" class="btn-popup btn-follow">
-                                <i class="fas fa-rocket"></i> Publish
-                            </button>
-                            <button onclick="window.deleteDraft('${ev.id}')" class="btn-popup btn-delete" style="display: block;">
-                                🗑️ Delete
-                            </button>
-                        </div>
-                    </div>
-                `;
-                
-                marker.bindPopup(popupContent);
-                marker.addTo(window.journalLayerGroup);
-            }
-        });
-
-        // 4. Update UI: Open the modal with real data
-        openModal(getJournalModalHTML(draftEvents));
-
-        // 5. Re-bind the close button
-        const closeBtn = document.getElementById('btn-close-journal');
-        if (closeBtn) closeBtn.onclick = () => closeModal();
-
-    } catch (err) {
-        console.error("Error fetching journal:", err);
-        if (tableBody) {
-            tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: #e74c3c;">Failed to sync with relays.</td></tr>';
-        }
-    }
-};
 
 /* Centers the map and places a temporary highlight marker. */
 window.centerMapAndHighlight = (lat, lng) => {
@@ -382,33 +307,7 @@ window.centerMapAndHighlight = (lat, lng) => {
 
 };
 
-// main.js
-
-/* Global function to handle draft deletion from popups or the journal table. */
-window.deleteDraft = async (eventId) => {
-    // 1. Confirmación con el usuario
-    if (!confirm("Are you sure you want to delete this draft from the Nostr network?")) return;
-
-    try {
-        // 2. Usamos el servicio de borrado (Kind 5) definido en nostr-service.js
-        const success = await nostr.deleteEvent(eventId); 
-
-        if (success) {
-            alert("✅ Draft deleted successfully.");
-            // 3. Refrescamos el diario para actualizar tabla y mapa
-            window.fetchAndShowJournal(); 
-        } else {
-            alert("❌ Failed to delete the draft. Please try again.");
-        }
-    } catch (err) {
-        console.error("Error deleting draft:", err);
-        alert("❌ An error occurred during deletion.");
-    }
-};
-
-/**
- * Global function to handle the transition from Draft (30024) to Public Anchor (1).
- */
+/* Global function to handle the transition from Draft (30024) to Public Anchor (1) */
 window.completeAnchor = (eventId) => {
     console.log("Initiating publication for event:", eventId);
     // Esta lógica la desarrollaremos el lunes para subir imágenes y firmar el Kind 1

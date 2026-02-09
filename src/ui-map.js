@@ -19,19 +19,16 @@ export class MapManager {
 
     /* Generador de iconos centralizado */
     _createIcon(type = 'public') {
-        // Determinamos la clase de color según el tipo (Punto 1)
-        const colorClass = type === 'draft' ? 'pin-img-orange' : 'pin-img-blue';
+        let colorClass = 'pin-img-blue';
+        if (type === 'draft') colorClass = 'pin-img-orange';
+        if (type === 'temp') colorClass = 'pin-img-purple'; // Nuevo color
         
         return L.divIcon({
             className: 'custom-pin-container',
-            // Inyectamos la imagen que nos pasaste
-            html: `
-                <img src="https://www.iconpacks.net/icons/2/free-location-pin-icon-2965-thumb.png" 
-                     class="pin-custom-img ${colorClass}">
-            `,
-            iconSize: [40, 40],   // Ajustamos el tamaño para que luzca bien
-            iconAnchor: [20, 40],  // El punto de anclaje es la punta inferior (mitad ancho, total alto)
-            popupAnchor: [0, -40]  // El popup sale sobre el pin
+            html: `<img src="https://www.iconpacks.net/icons/2/free-location-pin-icon-2965-thumb.png" class="pin-custom-img ${colorClass}">`,
+            iconSize: [40, 40],
+            iconAnchor: [20, 40],
+            popupAnchor: [0, -40]
         });
     }
 
@@ -49,15 +46,15 @@ export class MapManager {
         this.map.setView([lat, lon], zoom);
     }
 
-    /* addMarker mejorado para soportar tipos (Punto 1) */
+    /* addMarker mejorado para soportar tipos */
     addMarker(id, lat, lon, popupHTML, categoria = 'todos', type = 'public') {
         if (this.markers.has(id)) return; 
 
         const icon = this._createIcon(type);
         const marker = L.marker([lat, lon], { icon }).bindPopup(popupHTML);
         marker.categoria = categoria;
+        marker.markerType = type; // Guardamos el tipo para la limpieza
 
-        // Añadir a la capa correspondiente
         if (type === 'draft') {
             marker.addTo(this.draftLayer);
         } else {
@@ -68,7 +65,7 @@ export class MapManager {
         return marker;
     }
 
-    /* reatePopupHTML original recuperado y limpiado de estilos (Punto 3) */
+    /* reatePopupHTML original recuperado y limpiado de estilos */
     createPopupHTML(event, profile, categoriaId = 'general', isDraft = false) {
         const name = profile?.display_name || profile?.name || event.pubkey.substring(0, 8);
         const picture = profile?.picture || 'https://www.gravatar.com/avatar/0?d=mp';
@@ -77,10 +74,8 @@ export class MapManager {
         const titulo = isDraft ? (event.tags.find(t => t[0] === 'title')?.[1] || "Borrador") : (partes[0] || "Punto de interés");
         const descripcion = isDraft ? "" : (partes.slice(1).join('\n\n') || ""); 
         
-        const infoCat = CATEGORIAS.find(c => c.id === categoriaId) || CATEGORIAS.find(c => c.id === 'nostr');
-        const iconoClass = infoCat ? infoCat.icon : 'fa-map-pin';
+        const infoCat = !isDraft ? (CATEGORIAS.find(c => c.id === categoriaId) || CATEGORIAS.find(c => c.id === 'nostr')) : null;
 
-        // Definimos qué botones mostrar
         const actionsHTML = isDraft ? `
             <button onclick="window.completeAnchor('${event.id}')" class="btn-popup btn-follow">🚀 Publish</button>
             <button onclick="window.deleteDraft('${event.id}')" class="btn-popup btn-delete">🗑️ Delete</button>
@@ -101,7 +96,7 @@ export class MapManager {
                 </div>
                 <div class="popup-content">
                     <strong class="popup-title">${titulo}</strong>
-                    <span class="popup-category-badge"><i class="fas ${iconoClass}"></i> ${infoCat.label}</span>
+                    ${infoCat ? `<span class="popup-category-badge"><i class="fas ${infoCat.icon}"></i> ${infoCat.label}</span>` : ''}
                     <p class="popup-description">${descripcion}</p>
                 </div>
                 <div class="popup-actions">
@@ -159,5 +154,17 @@ export class MapManager {
         if (this.tempSearchGeometry) this.map.removeLayer(this.tempSearchGeometry);
         if (this.tempSearchMarker) this.map.removeLayer(this.tempSearchMarker);
         this.map.closePopup();
+    }
+
+    clearDrafts() {
+        // 1. Limpiamos visualmente la capa de borradores
+        this.draftLayer.clearLayers();
+
+        // 2. Limpiamos la memoria interna usando la propiedad markerType
+        for (let [id, marker] of this.markers) {
+            if (marker.markerType === 'draft') {
+                this.markers.delete(id);
+            }
+        }
     }
 }

@@ -975,3 +975,7 @@ input:checked + .test-slider:before { transform: translateX(16px); }
     filter: hue-rotate(30deg) brightness(1.2) saturate(1.5);
     opacity: 0.8; /* Mantenemos la transparencia para borradores */
 }
+
+.pin-img-purple {
+    filter: hue-rotate(260deg) brightness(0.9) saturate(1.8);
+}
