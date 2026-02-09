@@ -1,4 +1,3 @@
-
 import { GeoLogic } from './geo-utils.js';
 import { CATEGORIAS } from './categories.js';
 import { AuthManager } from './auth.js';
@@ -10,7 +9,7 @@ export function initAnchor(mapManager, nostrService) {
 
     if (!categorySelect || !btnAnchor) return;
 
-    // 1. Poblamos el selector
+    // 1. Poblamos el selector de categorías
     CATEGORIAS.forEach(cat => {
         const option = document.createElement('option');
         option.value = cat.id;
@@ -18,15 +17,9 @@ export function initAnchor(mapManager, nostrService) {
         categorySelect.appendChild(option);
     });
 
-    // 2. Lógica Unificada
     btnAnchor.onclick = async () => {
-        const categoria = categorySelect.value;
-        if (!categoria) {
-            alert("⚠️ Selecciona una categoría.");
-            return;
-        }
-
-        const isDebug = debugToggle?.checked; // ¿Está activo el modo prueba?
+        const categoria = categorySelect.value || 'nostr';
+        const isDebug = debugToggle?.checked; 
 
         try {
             const pos = await mapManager.getCurrentLocation();
@@ -34,40 +27,44 @@ export function initAnchor(mapManager, nostrService) {
             const desc = document.getElementById('poi-desc').value || "";
 
             if (isDebug) {
-                // --- MODO PRUEBA (Volátil) ---
+                // --- MODO PRUEBA (Pin Violeta / Volátil) ---
                 const mockEvent = {
                     id: "test-" + Date.now(),
                     pubkey: AuthManager.userPubkey || "00000000",
                     content: `${nombre}\n\n${desc}`,
                     tags: [["t", categoria], ["t", "spatial_anchor"]]
                 };
-                ejecutarAnclajeVisual(mockEvent, pos, categoria, mapManager);
-                console.log("🧪 Anclaje de prueba creado localmente.");
+                
+                // Generamos el HTML y lo añadimos como 'temp' (Violeta)
+                const html = mapManager.createPopupHTML(mockEvent, null, categoria);
+                mapManager.addMarker(mockEvent.id, pos.lat, pos.lon, html, categoria, 'temp');
+                
+                console.log("🧪 Prueba local creada (Violeta).");
             } else {
-                // --- MODO REAL (Nostr) ---
-                if (!AuthManager.userPubkey) {
-                    alert("Debes iniciar sesión para publicar en Nostr.");
-                    return;
-                }
+                // --- MODO REAL (Pin Azul / Nostr) ---
+                if (!AuthManager.userPubkey) return alert("Inicia sesión para publicar.");
                 
                 const eventData = {
                     pubkey: AuthManager.userPubkey,
                     content: `${nombre}\n\n${desc}`,
                     tags: [
-                        ["g", GeoLogic.encode(pos.lat, pos.lon)], // Geohash
-                        ["t", "spatial_anchor"],                         // Identificador de la app
-                        ["t", categoria],                                // Tag de búsqueda
-                        ["l", "category", categoria],                    // NIP-32 Label
-                        ["location", pos.lat + "," + pos.lon]            // Coordenadas raw
+                        ["g", GeoLogic.encode(pos.lat, pos.lon)],
+                        ["t", "spatial_anchor"],
+                        ["t", categoria],
+                        ["location", pos.lat + "," + pos.lon]
                     ]
                 };
 
                 const signedEvent = await nostrService.publishAnchor(eventData);
-                ejecutarAnclajeVisual(signedEvent, pos, categoria, mapManager);
-                alert("🚀 ¡Posición anclada con éxito en la red Nostr!");
+                
+                // Generamos el HTML y lo añadimos como 'public' (Azul)
+                const html = mapManager.createPopupHTML(signedEvent, null, categoria);
+                mapManager.addMarker(signedEvent.id, pos.lat, pos.lon, html, categoria, 'public');
+                
+                alert("🚀 ¡Posición anclada con éxito en Nostr!");
             }
 
-            // Limpiar formulario
+            // Limpieza de campos
             document.getElementById('poi-name').value = '';
             document.getElementById('poi-desc').value = '';
             categorySelect.value = '';
@@ -77,11 +74,4 @@ export function initAnchor(mapManager, nostrService) {
             alert("Error: " + err.message);
         }
     };
-}
-
-// Función auxiliar para no repetir código de dibujo
-function ejecutarAnclajeVisual(event, pos, categoria, mapManager) {
-    const profile = AuthManager.profileCache[event.pubkey];
-    const html = mapManager.createPopupHTML(event, profile, categoria);
-    mapManager.addMarker(event.id, pos.lat, pos.lon, html, categoria);
 }
