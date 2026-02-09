@@ -955,3 +955,23 @@ input:checked + .test-slider:before { transform: translateX(16px); }
 
 .btn-draft-publish:hover { opacity: 0.9; }
 .btn-draft-delete:hover { background: #fff5f5; }
+
+/* Gotas de pin */
+
+.pin-custom-img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    transition: filter 0.3s ease; /* Efecto suave al cambiar */
+}
+
+/* Transformamos el pin rojo original a AZUL mediante filtros */
+.pin-img-blue {
+    filter: hue-rotate(200deg) brightness(1) saturate(1.5);
+}
+
+/* Transformamos el pin rojo original a NARANJA con opacidad (Punto 1) */
+.pin-img-orange {
+    filter: hue-rotate(30deg) brightness(1.2) saturate(1.5);
+    opacity: 0.8; /* Mantenemos la transparencia para borradores */
+}
