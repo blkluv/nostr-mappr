@@ -1,264 +1,139 @@
-// main.js - El Director de Orquesta
+
+// --- 1. IMPORTACIONES (Suministros) ---
 import { MapManager } from './ui-map.js';
 import { NostrService } from './nostr-service.js';
 import { GeoLogic } from './geo-utils.js';
 import { AuthManager } from './auth.js';
-import { initUI, openModal, closeModal, getDraftModalHTML, getJournalModalHTML } from './ui-controller.js';
+import { JournalManager } from './journal-manager.js';
+
+// Controladores de Módulos
+import { DraftController } from './draft-controller.js';
+import { UserActions } from './user-actions.js';
+import { initUI, openModal, closeModal } from './ui-controller.js';
 import { initFilters } from './filter-controller.js';
 import { initAnchor } from './anchor-controller.js';
 import { initSearch } from './search-controller.js';
-import { JournalManager } from './journal-manager.js';
-import { UserActions } from './user-actions.js';
 
-// --- CONFIGURACIÓN ---
+// --- 2. CONFIGURACIÓN Y ESTADO INICIAL ---
 const RELAYS = ['wss://nos.lol', 'wss://relay.primal.net', 'wss://relay.damus.io']; 
 const ROSARIO_COORDS = [-32.9468, -60.6393];
+const eventosProcesados = new Set(); // Cache para evitar duplicados en el mapa
 
-
-// --- SESIÓN DE USUARIO ---
-const sessionActive = AuthManager.isLoggedIn(); 
-if (sessionActive) console.log("🔐 Sesión recuperada:", AuthManager.userPubkey);
-
-// --- INICIALIZACIÓN ---
+// --- 3. INSTANCIACIÓN DE SERVICIOS NÚCLEO ---
 const map = new MapManager('map', ROSARIO_COORDS); 
-window.map = map;
-
-initSearch(map);
-initFilters(map);
+window.map = map; // Referencia global necesaria para Leaflet
 
 const nostr = new NostrService(RELAYS);
-
 const journal = new JournalManager(map, nostr);
 
-// Exportamos funciones para que el HTML (onclick) las encuentre
-window.fetchAndShowJournal = () => journal.openJournal();
-window.deleteDraft = (id) => journal.deleteDraft(id);
-window.syncDrafts = () => journal.syncDrafts();
-
-initAnchor(map, nostr);
-
-// Cargar puntos existentes
-const eventosProcesados = new Set();
-
+// --- 4. ORQUESTACIÓN DE RED (NOSTR) ---
 function iniciarSuscripcion() {
     nostr.subscribeToAnchors(async (event) => {
-        
         if (eventosProcesados.has(event.id)) return;
         eventosProcesados.add(event.id);
-
-        const name = AuthManager.getDisplayName(event.pubkey);
 
         const hash = GeoLogic.getHashFromEvent(event);
         if (hash) {
             const { lat, lon } = GeoLogic.decode(hash);
             const profile = AuthManager.profileCache[event.pubkey] || null;
+            
+            // Identificación de categoría
             const tagCat = event.tags.find(t => t[0] === 't' && t[1] !== 'spatial_anchor');
             const categoriaEvento = tagCat ? tagCat[1] : 'todos';
+
             const popupHTML = map.createPopupHTML(event, profile, categoriaEvento);
             map.addMarker(event.id, lat, lon, popupHTML, categoriaEvento);
         }
     });
 }
 
-// Llamada inicial
-iniciarSuscripcion();
+// --- 5. INICIALIZACIÓN DE CONTROLADORES DE INTERFAZ ---
+initSearch(map);
+initFilters(map);
+initAnchor(map, nostr);
+initUI(nostr);
 
-// Carga borradores automáticamente
+// Sincronización de datos iniciales
+iniciarSuscripcion();
 journal.syncDrafts();
 
-// centrar mapa por GPS al inicio
+// Posicionamiento inicial por GPS
 map.getCurrentLocation()
     .then(pos => map.setView(pos.lat, pos.lon))
     .catch(err => console.warn("Usando ubicación por defecto:", err));
 
+// --- 6. PUENTES GLOBALIZADOS (Window API) ---
+// Estos puentes permiten que el HTML y ui-controller invoquen lógica modular
 
-initUI(nostr);
+// Gestión del Diario
+window.fetchAndShowJournal = () => journal.openJournal();
+window.deleteDraft = (id) => journal.deleteDraft(id);
+window.syncDrafts = () => journal.syncDrafts();
+window.centerMapAndHighlight = (lat, lng) => {
+    closeModal(); 
+    window.map.setView(lat, lng, 16); 
+    if (window.tempHighlightMarker) {
+        window.map.map.removeLayer(window.tempHighlightMarker);
+        window.tempHighlightMarker = null;
+    }
+};
 
-// --- ACCIONES DE USUARIO (MODULARIZADO) ---
+// Acciones Sociales
 window.followUser = (pubkey, name) => UserActions.followUser(pubkey, name);
 window.zapUser = (pubkey, name, titulo) => UserActions.zapUser(pubkey, name, titulo);
 window.borrarPunto = (eventId) => UserActions.borrarPunto(eventId, map, nostr);
 
+// Flujos de Anclaje y Publicación
+window.abrirModalBorrador = (lat, lng) => DraftController.abrirModal(lat, lng, map, nostr, journal);
+window.abrirModalResena = (lat, lng) => alert(`Formulario de reseña: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+window.completeAnchor = (eventId) => alert("Publishing feature will be available on Monday!");
 
+// --- 7. EVENTOS DE MAPA Y UX ---
+
+// Lógica de "Point of Presence" (PoP)
+window.addEventListener('trigger-pop', (e) => {
+    const { lat, lng } = e.detail;
+    window.map.setView(lat, lng, 18);
+    if (window.tempPoPMarker) window.map.map.removeLayer(window.tempPoPMarker);
+
+    window.tempPoPMarker = L.marker([lat, lng], {
+        icon: window.map._createIcon('temp') 
+    }).addTo(window.map.map);
+
+    window.tempPoPMarker.bindPopup(`
+        <div class="pop-decision-container">
+            <strong>📍 Ubicación Confirmada</strong>
+            <p>¿Cómo quieres registrar este punto?</p>
+            <div class="pop-btn-grid">
+                <button onclick="window.abrirModalResena(${lat}, ${lng})" class="btn-pop-resena">📝 Review</button>
+                <button onclick="window.abrirModalBorrador(${lat}, ${lng})" class="btn-pop-draft">💾 Draft</button>
+            </div>
+        </div>
+    `, { closeButton: false, offset: [0, -10] }).openPopup();
+});
+
+// Botón de geolocalización rápida
 document.getElementById('btn-locate-me').onclick = async (e) => {
     e.stopPropagation();
-    const btn = document.getElementById('btn-locate-me');
-    const icon = btn.querySelector('i');
-    
-    // Cambiamos el icono por uno de carga
+    const icon = e.currentTarget.querySelector('i');
     icon.className = "fas fa-spinner fa-spin"; 
-    
     try {
         const pos = await map.getCurrentLocation();
         map.setView(pos.lat, pos.lon, 16);
     } catch (err) {
         alert("📍 Error al obtener ubicación");
     } finally {
-        // Restauramos el icono original
         icon.className = "fas fa-crosshairs";
     }
 };
 
+// Verificación de autoría en Popups
 map.map.on('popupopen', (e) => {
-    // Obtenemos el contenedor del popup recién abierto
     const container = e.popup._contentNode.querySelector('.popup-container');
     if (container) {
         const pubkeyPunto = container.getAttribute('data-pubkey');
-        const miPubkey = window.userPubkey || AuthManager.userPubkey; // Doble verificación
-
-        if (miPubkey && miPubkey === pubkeyPunto) {
+        if (AuthManager.userPubkey === pubkeyPunto) {
             container.classList.add('is-owner');
         }
     }
 });
-
-window.addEventListener('trigger-pop', (e) => {
-    const { lat, lng } = e.detail;
-    window.map.setView(lat, lng, 18);
-
-    if (window.tempPoPMarker) window.map.map.removeLayer(window.tempPoPMarker);
-
-    // Creamos el marcador usando el nuevo estilo 'temp' (Violeta)
-    window.tempPoPMarker = L.marker([lat, lng], {
-        draggable: false, 
-        icon: window.map._createIcon('temp') 
-    }).addTo(window.map.map);
-
-    window.tempPoPMarker.bindPopup(`
-    <div class="pop-decision-container">
-        <strong>📍 Ubicación Confirmada</strong>
-        <p>Estás aquí. ¿Cómo quieres registrar este punto?</p>
-        <div class="pop-btn-grid">
-            <button onclick="window.abrirModalResena(${lat}, ${lng})" class="btn-pop-resena">📝 Reseña</button>
-            <button onclick="window.abrirModalBorrador(${lat}, ${lng})" class="btn-pop-draft">💾 Borrador</button>
-        </div>
-    </div>
-`, { closeButton: false, offset: [0, -10] }).openPopup();
-});
-
-window.abrirModalResena = (lat, lng) => {
-    alert(`Abriendo formulario de reseña para: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-};
-
-window.abrirModalBorrador = (lat, lng) => {
-    // 1. Cerramos cualquier popup abierto en el mapa para limpiar la vista
-    if (window.map && window.map.map) window.map.map.closePopup();
-    
-    // 2. Abrimos el modal con la estructura de borrador
-    openModal(getDraftModalHTML(lat, lng));
-
-    // 3. Vinculamos el botón de cierre (X)
-    const closeBtn = document.getElementById('btn-close-draft');
-    if (closeBtn) closeBtn.onclick = () => closeModal();
-
-    // 4. Configuración de la zona de fotos
-    const fileInput = document.getElementById('draft-photo');
-    const previewContainer = document.getElementById('preview-container');
-    const uploadZone = document.getElementById('upload-zone');
-    let imagesBase64 = []; // Almacén temporal de fotos seleccionadas
-
-    if (uploadZone && fileInput) {
-        uploadZone.onclick = () => fileInput.click();
-
-        fileInput.onchange = (e) => {
-            const files = Array.from(e.target.files);
-            files.forEach(file => {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const base64 = event.target.result;
-                    imagesBase64.push(base64);
-
-                    // Renderizado de miniatura en el modal
-                    const imgThumb = document.createElement('img');
-                    imgThumb.src = base64;
-                    imgThumb.style.cssText = "width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px solid #8e44ad; margin-bottom: 5px;";
-                    previewContainer.appendChild(imgThumb);
-                };
-                reader.readAsDataURL(file);
-            });
-
-            // Actualización visual del contador de fotos
-            const icon = uploadZone.querySelector('i');
-            const label = uploadZone.querySelector('p');
-            if (icon) icon.style.display = 'none';
-            if (label) label.textContent = `${files.length} fotos seleccionadas`;
-        };
-    }
-
-    // 5. Lógica de GUARDADO Y FIRMA DIRECTA (Kind 30024)
-    const btnSave = document.getElementById('btn-save-draft');
-    if (btnSave) {
-        btnSave.onclick = async () => {
-            const titleInput = document.getElementById('draft-title');
-            const title = titleInput ? titleInput.value.trim() : "";
-            const categoryInput = document.getElementById('draft-category');
-            const categoria = categoryInput ? categoryInput.value : "";
-
-            if (!title) {
-                alert("Por favor, ponle un nombre al lugar.");
-                return;
-            }
-
-            // Efecto visual de carga y firma
-            const originalHTML = btnSave.innerHTML;
-            btnSave.innerHTML = '<i class="fas fa-spinner fa-spin"></i> FIRMANDO...';
-            btnSave.disabled = true;
-
-            try {
-                // Construcción del evento de borrador bajo estándar Nostr
-                const eventoBorrador = {
-                    kind: 30024,
-                    pubkey: AuthManager.userPubkey,
-                    content: `Borrador de anclaje creado desde la app.`,
-                    tags: [
-                        ["d", `anchor_${Date.now()}`],
-                        ["title", title],                  
-                        ["g", `${lat},${lng}`],            
-                        ["t", "spatial_anchor"],            
-                        ["t", categoria],
-                    ],
-                    created_at: Math.floor(Date.now() / 1000)
-                };
-
-                // NOTA: Si imagesBase64 tiene datos, el lunes implementaremos NIP-94 aquí
-                
-                // Firmar y enviar directamente a los Relays configurados
-                const exito = await nostr.publishEvent(eventoBorrador);
-
-                if (exito) {
-                    journal.syncDrafts();
-                    alert(`✅ "${title}" firmado y guardado en tu Diario (Nostr).`);
-                    closeModal();
-                    // Limpiamos el marcador temporal del mapa si existe
-                    if (window.tempPoPMarker) window.map.map.removeLayer(window.tempPoPMarker);
-                } else {
-                    throw new Error("Firma rechazada");
-                }
-
-            } catch (err) {
-                console.error("Error en el proceso de firma:", err);
-                alert("❌ No se pudo firmar el borrador. Verifica tu extensión (Alby/Nos2x).");
-                btnSave.innerHTML = originalHTML;
-                btnSave.disabled = false;
-            }
-        };
-    }
-};
-
-/* Centers the map and places a temporary highlight marker. */
-window.centerMapAndHighlight = (lat, lng) => {
-    closeModal();
-    window.map.setView(lat, lng, 16);
-    
-    if (window.tempHighlightMarker) {
-        window.map.map.removeLayer(window.tempHighlightMarker);
-    }
-
-};
-
-/* Global function to handle the transition from Draft (30024) to Public Anchor (1) */
-window.completeAnchor = (eventId) => {
-    console.log("Initiating publication for event:", eventId);
-    // Esta lógica la desarrollaremos el lunes para subir imágenes y firmar el Kind 1
-    alert("Publishing feature will be available on Monday!");
-};
