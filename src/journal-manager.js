@@ -7,29 +7,38 @@ export class JournalManager {
         this.map = mapManager;
         this.nostr = nostrService;
         this.drafts = [];
+        this.isSyncing = false;
     }
 
     /* Sincroniza borradores desde la red y los pinta en el mapa */
     async syncDrafts() {
-        if (!AuthManager.isLoggedIn()) return;
+        if (!AuthManager.isLoggedIn() || this.isSyncing) return; 
 
+        this.isSyncing = true;
+        
         const filters = {
-            kinds: [30024],
+            kinds: [1, 30024], 
             authors: [AuthManager.userPubkey],
             "#t": ["spatial_anchor"]
         };
 
         try {
-            console.log("🔄 Sincronizando borradores...");
-            this.drafts = await this.nostr.fetchEvents(filters);
+            const nuevosEventos = await this.nostr.fetchEvents(filters);
             
-            // Limpiamos la capa de borradores antes de repintar
+            // Verificación de cambios reales: solo procesamos si el total de eventos cambió
+            if (nuevosEventos.length === this.drafts.length) {
+                this.isSyncing = false;
+                return; 
+            }
+
+            this.drafts = nuevosEventos.sort((a, b) => b.created_at - a.created_at);
             this.map.clearDrafts();
-            
             this.drafts.forEach(ev => this.renderDraft(ev));
-            console.log(`✅ ${this.drafts.length} borradores cargados.`);
+            
         } catch (err) {
-            console.error("Error en syncDrafts:", err);
+            console.error("Error en sincronización", err);
+        } finally {
+            this.isSyncing = false;
         }
     }
 
@@ -57,13 +66,24 @@ export class JournalManager {
             return;
         }
 
-        // Mostramos lo que ya tenemos y refrescamos en segundo plano
+        // 1. Abrimos el modal con lo que tenemos para dar feedback inmediato
         openModal(getJournalModalHTML(this.drafts));
         
+        // 2. Sincronizamos en segundo plano
+        await this.syncDrafts(); 
+        
+        // 3. RE-INYECTAMOS solo si hubo cambios (esto evita el parpadeo y los logs infinitos)
+        const modalContent = document.getElementById('modal-content');
+        if (modalContent) {
+            modalContent.innerHTML = getJournalModalHTML(this.drafts);
+            this.setupJournalEvents(); // Re-vinculamos el botón de cerrar
+        }
+    }
+
+    // Función auxiliar para no repetir código de eventos
+    setupJournalEvents() {
         const closeBtn = document.getElementById('btn-close-journal');
         if (closeBtn) closeBtn.onclick = () => closeModal();
-
-        await this.syncDrafts(); // Actualiza por si hay cambios nuevos
     }
 
     

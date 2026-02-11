@@ -124,17 +124,36 @@ export function closeModal() {
     modalContent.innerHTML = '';
 }
 
-/* Genera el HTML dinámico para el modal del diario de anclajes. */
 
-export function getJournalModalHTML(eventosBorrador = []) {
-    const filas = eventosBorrador.map(ev => {
-        const titulo = ev.tags.find(t => t[0] === 'title')?.[1] || 'Sin título';
+
+// Definición de estados centralizada para escalabilidad futura
+const ESTADOS_MAPA = {
+    1: { label: 'Anclado', class: 'public', canPublish: false },
+    30024: { label: 'Borrador', class: 'draft', canPublish: true }
+};
+
+export function getJournalModalHTML(eventos = []) {
+    const filas = eventos.map(ev => {
+        // Obtenemos la configuración del estado o un fallback seguro
+        const config = ESTADOS_MAPA[ev.kind] || { label: 'Desconocido', class: 'unknown', canPublish: false };
+        
+        // 1. Lógica robusta para títulos
+        const titulo = ev.kind === 1 
+            ? (ev.content.split('\n\n')[0] || "Anclaje Público") 
+            : (ev.tags.find(t => t[0] === 'title')?.[1] || 'Sin título');
+
+        // 2. Coordenadas y Fecha
         const coords = ev.tags.find(t => t[0] === 'g')?.[1] || '0,0';
         const [lat, lng] = coords.split(',');
         const fecha = new Date(ev.created_at * 1000).toLocaleDateString();
+        
+        // 3. Lógica robusta de categorías
         const catId = ev.tags.find(t => t[0] === 't' && t[1] !== 'spatial_anchor')?.[1];
         const infoCat = CATEGORIAS.find(c => c.id === catId);
         const categoriaTexto = infoCat ? infoCat.label : '-';
+
+        // 4. Badge de estado dinámico pero con tus estilos
+        const statusBadge = `<span class="status-pill ${config.class}">${config.label}</span>`;
 
         return `
             <tr>
@@ -147,10 +166,10 @@ export function getJournalModalHTML(eventosBorrador = []) {
                     </a>
                 </td>
                 <td style="color: #5851db; font-weight: 600;">${categoriaTexto}</td>
-                <td class="journal-status-text">Anclado</td>
+                <td style="text-align: center;">${statusBadge}</td>
                 <td>
                     <div class="actions-row">
-                        <button class="btn-action-icon" onclick="window.completeAnchor('${ev.id}')">🚀</button>
+                        ${config.canPublish ? `<button class="btn-action-icon" onclick="window.completeAnchor('${ev.id}')">🚀</button>` : ''}
                         <button class="btn-action-icon" onclick="window.deleteDraft('${ev.id}')">🗑️</button>
                     </div>
                 </td>
@@ -158,8 +177,9 @@ export function getJournalModalHTML(eventosBorrador = []) {
         `;
     }).join('');
 
+    // Estructura de contenedores original intacta
     return `
-        <div class="profile-modal-inner">
+        <div class="profile-modal-inner" style="max-width: 800px;">
             <button class="close-btn" id="btn-close-journal">✕</button>
             <h2 style="font-size: 24px; font-weight: 800; color: #1a1a1a; align-self: center;">Diario de anclajes</h2>
             
