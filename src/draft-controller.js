@@ -2,9 +2,7 @@ import { openModal, closeModal, getDraftModalHTML, getPublishModalHTML } from '.
 import { AuthManager } from './auth.js';
 
 export const DraftController = {
-    /**
-     * Abre el modal para un nuevo borrador (Pin Naranja)
-     */
+    /* Opens the modal for a new draft (Orange Pin) */
     openDraftModal(lat, lng, mapManager, nostrService, journalManager) {
         if (mapManager && mapManager.map) mapManager.map.closePopup();
         openModal(getDraftModalHTML(lat, lng));
@@ -13,12 +11,10 @@ export const DraftController = {
         if (closeBtn) closeBtn.onclick = () => closeModal();
 
         DraftController.initPhotoLogic();
-        DraftController.initSaveLogic(lat, lng, nostrService, journalManager);
+        DraftController.initDraftLogic(lat, lng, nostrService, journalManager); /* Renamed from initSaveLogic */
     },
 
-    /**
-     * Abre el modal para una Reseña directa (Pin Violeta - PoP)
-     */
+    /* Opens the modal for a direct Review (Violet Pin - PoP) */
     openReviewModal(lat, lng, mapManager, nostrService, journalManager) {
         if (mapManager && mapManager.map) mapManager.map.closePopup();
         openModal(getPublishModalHTML(lat, lng));
@@ -30,9 +26,7 @@ export const DraftController = {
         DraftController.initPublishLogic(null, lat, lng, nostrService, journalManager);
     },
 
-    /**
-     * Abre el modal para publicar un borrador existente (Cohete 🚀)
-     */
+    /* Opens the modal to publish an existing draft (Rocket 🚀) */
     openPublishModal(eventId, lat, lng, mapManager, nostrService, journalManager) {
         if (mapManager && mapManager.map) mapManager.map.closePopup();
         
@@ -49,14 +43,11 @@ export const DraftController = {
         const closeBtn = document.getElementById('btn-close-publish');
         if (closeBtn) closeBtn.onclick = () => closeModal();
 
-        // Llamadas directas al objeto para evitar el TypeError
         DraftController.initPublishPhotoLogic();
         DraftController.initPublishLogic(eventId, lat, lng, nostrService, journalManager);
     },
 
-    /**
-     * Lógica para capturar fotos en el modal de PUBLICACIÓN
-     */
+    /* Photo capture logic for the PUBLISH modal */
     initPublishPhotoLogic() {
         const fileInput = document.getElementById('pub-photo');
         const uploadZone = document.getElementById('pub-upload-zone');
@@ -81,9 +72,7 @@ export const DraftController = {
         };
     },
 
-    /**
-     * Lógica para enviar el evento definitivo Kind 1
-     */
+    /* Logic to send the final Kind 1 event to Nostr */
     initPublishLogic(eventId, lat, lng, nostrService, journalManager) {
         const btn = document.getElementById('btn-do-publish');
         if (!btn) return;
@@ -93,9 +82,9 @@ export const DraftController = {
             const desc = document.getElementById('pub-description').value.trim();
             const cat = document.getElementById('pub-category').value;
 
-            if (!title) return showToast("El título es obligatorio", "error");
+            if (!title) return showToast("Title is required", "error");
 
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> PUBLICANDO...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> PUBLISHING...';
             btn.disabled = true;
 
             const publicEvent = {
@@ -112,50 +101,46 @@ export const DraftController = {
             };
 
             try {
-                const success = await nostrService.publishEvent(publicEvent); // Firma 1 (Punto Azul)
-                // draft-controller.js
-                    if (success) {
-                        // Si el punto viene de un borrador (tiene eventId), lo limpiamos
-                        if (eventId) { 
-                            console.log("🗑️ Iniciando borrado de borrador naranja...");
-                            
-                            // 1. Borrado en Relays (Pedirá la 2da firma de Alby)
-                            await nostrService.deleteEvent(eventId); 
-                            
-                            // 2. Limpieza visual inmediata en el mapa
-                            const marker = journalManager.map.markers.get(eventId);                    
-                            if (marker) {
-                                journalManager.map.draftLayer.removeLayer(marker);
-                                journalManager.map.markers.delete(eventId);
-                            }
-                            
-                            // 3. Limpieza en la lista interna del Diario
-                            journalManager.drafts = journalManager.drafts.filter(d => d.id !== eventId);
+                const success = await nostrService.publishEvent(publicEvent);
+                if (success) {
+                    /* If it comes from a draft, we clean it up */
+                    if (eventId) { 
+                        console.log("🗑️ Deleting draft anchor...");
+                        await nostrService.deleteEvent(eventId); 
+                        
+                        const marker = journalManager.map.markers.get(eventId);                    
+                        if (marker) {
+                            journalManager.map.draftLayer.removeLayer(marker);
+                            journalManager.map.markers.delete(eventId);
                         }
                         
-                        // 4. Feedback final al usuario
-                        showToast("🚀 ¡Anclaje publicado con éxito!", "success");
-                        closeModal();
-                        
-                        // 5. Sincronización de seguridad tras 1 segundo
-                        setTimeout(() => journalManager.syncDrafts(), 1000);
+                        /* Updated to use 'entries' instead of 'drafts' to match JournalManager */
+                        journalManager.entries = journalManager.entries.filter(e => e.id !== eventId);
                     }
+                    
+                    showToast("🚀 Anchor successfully published!", "success");
+                    closeModal();
+                    
+                    /* Updated to use 'syncJournal' instead of 'syncDrafts' */
+                    setTimeout(() => journalManager.syncJournal(), 1000);
+                }
             } catch (err) {
-                            console.error("Error publishing:", err);
-                            btn.disabled = false;
-                            btn.innerHTML = 'PUBLICAR EN NOSTR';
+                console.error("Error publishing:", err);
+                btn.disabled = false;
+                btn.innerHTML = 'PUBLISH TO NOSTR';
             }
         };
     },
 
+    /* Basic photo logic for drafts */
     initPhotoLogic() {
         const fileInput = document.getElementById('draft-photo');
         const uploadZone = document.getElementById('upload-zone');
         if (uploadZone && fileInput) uploadZone.onclick = () => fileInput.click();
     },
 
-    /* Lógica para guardar un borrador (Kind 30024) en el Diario */
-    initSaveLogic(lat, lng, nostrService, journalManager) {
+    /* Logic to save a Draft (Kind 30024) to the Journal */
+    initDraftLogic(lat, lng, nostrService, journalManager) { /* Renamed from initSaveLogic */
         const btnSave = document.getElementById('btn-save-draft');
         if (!btnSave) return;
 
@@ -166,22 +151,20 @@ export const DraftController = {
             const title = titleInput ? titleInput.value.trim() : "";
             const category = categorySelect ? categorySelect.value : "gastronomia";
 
-            // Validación básica antes de procesar
             if (!title) {
-                showToast("⚠️ Por favor, ingresa un título para el borrador", "error");
+                showToast("⚠️ Please enter a title for the draft", "error");
                 return;
             }
 
-            btnSave.innerHTML = '<i class="fas fa-spinner fa-spin"></i> GUARDANDO...';
+            btnSave.innerHTML = '<i class="fas fa-spinner fa-spin"></i> SAVING...';
             btnSave.disabled = true;
 
             try {
-                // Construcción del evento Kind 30024 (Borrador Parametrizado)
                 const draftEvent = {
                     kind: 30024,
-                    content: `Borrador de anclaje: ${title}`,
+                    content: `Anchor Draft: ${title}`,
                     tags: [
-                        ["d", `draft_${Date.now()}`], // Identificador único requerido para 30024
+                        ["d", `draft_${Date.now()}`],
                         ["title", title],
                         ["t", "spatial_anchor"],
                         ["t", category],
@@ -193,18 +176,18 @@ export const DraftController = {
                 const success = await nostrService.publishEvent(draftEvent);
 
                 if (success) {
-                    // Sincronizamos el diario para que el nuevo punto aparezca en la lista
-                    await journalManager.syncDrafts(); 
-                    showToast(`✅ "${title}" guardado en tu Diario`, "success");
+                    /* Updated to use 'syncJournal' and entries list */
+                    await journalManager.syncJournal(); 
+                    showToast(`✅ "${title}" saved to your Journal`, "success");
                     closeModal();
                 } else {
-                    throw new Error("Relay rechazo el evento");
+                    throw new Error("Relay rejected the event");
                 }
             } catch (err) {
-                console.error("Error al guardar borrador:", err);
-                showToast("❌ No se pudo guardar el borrador", "error");
+                console.error("Error saving draft:", err);
+                showToast("❌ Could not save draft", "error");
                 btnSave.disabled = false;
-                btnSave.innerHTML = 'GUARDAR EN DIARIO';
+                btnSave.innerHTML = 'SAVE TO JOURNAL';
             }
         };
     }

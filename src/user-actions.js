@@ -2,66 +2,64 @@ import { AuthManager } from './auth.js';
 import { showToast, openModal, getConfirmModalHTML } from './ui-controller.js';
 
 export const UserActions = {
-    /* Lógica de Follow */
+    /* Handles the Follow logic for Nostr users. */
     async followUser(pubkey, name) {
         if (!AuthManager.isLoggedIn()) {
-            showToast("🔑 Debes iniciar sesión para seguir a otros usuarios.", "error");
+            showToast("🔑 Log in to follow other users.", "error");
             return;
         }
 
         if (pubkey === AuthManager.userPubkey) {
-            showToast("❌ No puedes seguirte a ti mismo.", "error");
+            showToast("❌ You cannot follow yourself.", "error");
             return;
         }
 
-        // Usamos el nombre del caché si está disponible para una mejor UX
         const displayName = AuthManager.getDisplayName(pubkey) || name;
-        showToast(`✅ Siguiendo a ${name} (Próximamente)`, "success");
+        showToast(`✅ Following ${name} (Coming Soon)`, "success");
     },
 
-    /* Lógica de Zap */
-    zapUser(pubkey, name, titulo) {
+    /* Handles the Zap (Lightning payment) initialization. */
+    zapUser(pubkey, name, title) {
         if (!AuthManager.isLoggedIn()) {
-            showToast("⚡ Conecta tu cuenta para enviar Zaps", "error"); //
+            showToast("⚡ Connect your account to send Zaps", "error");
             return;
         }
 
         const displayName = AuthManager.getDisplayName(pubkey) || name;
-        console.log(`⚡ Zap iniciado para ${displayName} por: ${titulo}`);
-        showToast(`⚡ Enviando sats a ${displayName} por recomendar "${titulo}"`, "success");
+        console.log(`⚡ Zap initiated for ${displayName} for: ${title}`);
+        showToast(`⚡ Sending sats to ${displayName} for recommending "${title}"`, "success");
     },
 
-    /* Lógica de Borrado */
-    async borrarPunto(eventId, mapManager, nostrService, eventosProcesados) {
-        // Definimos la acción real de borrado
-        const ejecutarBorrado = async () => {
+    /* Logic for deleting an existing anchor (Kind 5 request). */
+    async deleteAnchor(eventId, mapManager, nostrService, processedEvents) {
+        const performDelete = async () => {
             try {
-                // Kind 5: Solicitud de borrado en Nostr
-                const exito = await nostrService.deleteEvent(eventId); 
+                /* Kind 5: Deletion request in Nostr network. */
+                const success = await nostrService.deleteEvent(eventId); 
 
-                if (exito) {
-                    // Eliminación visual del mapa
-                    const marcador = mapManager.markers.get(eventId);
-                    if (marcador) {
-                        mapManager.map.removeLayer(marcador);
+                if (success) {
+                    /* Visual removal from the map manager. */
+                    const marker = mapManager.markers.get(eventId);
+                    if (marker) {
+                        mapManager.map.removeLayer(marker);
                         mapManager.markers.delete(eventId);
                     }
                     
-                    if (eventosProcesados) eventosProcesados.delete(eventId);
-                    showToast("✅ Solicitud de borrado enviada", "success");
+                    if (processedEvents) processedEvents.delete(eventId);
+                    showToast("✅ Deletion request sent", "success");
                 } else {
-                    showToast("❌ El relay no pudo procesar el borrado", "error");
+                    showToast("❌ Relay could not process the deletion", "error");
                 }
             } catch (err) {
-                console.error("Error en el proceso de borrado:", err);
-                showToast("❌ Error inesperado al intentar borrar", "error");
+                console.error("Error in deletion process:", err);
+                showToast("❌ Unexpected error while deleting", "error");
             }
         };
 
-        // En lugar de confirm(), abrimos nuestro modal de vidrio
+        /* Open custom glass modal for confirmation. */
         openModal(getConfirmModalHTML(
-            "¿Deseas eliminar permanentemente este anclaje? Esta acción enviará un evento Kind 5 a la red.", 
-            ejecutarBorrado
+            "Do you want to permanently delete this anchor? This will send a Kind 5 event to the network.", 
+            performDelete
         ));
     }
 };

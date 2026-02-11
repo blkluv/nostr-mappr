@@ -7,7 +7,7 @@ export function initFilters(mapManager) {
 
     if (!filterContainer) return;
 
-    // 1. Renderizar Chips
+    /* Renders Category Chips from the categories definition. */
     CATEGORIAS.forEach(cat => {
         const chip = document.createElement('div');
         chip.className = 'filter-chip';
@@ -17,7 +17,7 @@ export function initFilters(mapManager) {
         filterContainer.appendChild(chip);
     });
 
-    // 2. Lógica de Scroll Mejorada
+    /* Updates scroll button visibility based on container position. */
     const checkScroll = () => {
         const scrollPos = filterContainer.scrollLeft;
         const maxScroll = filterContainer.scrollWidth - filterContainer.clientWidth;
@@ -27,7 +27,6 @@ export function initFilters(mapManager) {
             scrollLeft.style.visibility = scrollPos > 5 ? "visible" : "hidden";
         }
         if (scrollRight) {
-            // Si el scroll máximo es mayor a 0, significa que hay desborde
             const showRight = scrollPos < maxScroll - 5;
             scrollRight.style.opacity = showRight ? "1" : "0";
             scrollRight.style.visibility = showRight ? "visible" : "hidden";
@@ -38,38 +37,34 @@ export function initFilters(mapManager) {
         scrollRight.onclick = () => filterContainer.scrollBy({ left: 240, behavior: 'smooth' });
         scrollLeft.onclick = () => filterContainer.scrollBy({ left: -240, behavior: 'smooth' });
         filterContainer.onscroll = checkScroll;
-
-        // NUEVO: Comprobación inicial apenas se cargan los chips
         setTimeout(checkScroll, 300); 
     }
 }
 
-
-// 3. Función de Filtrado Modularizada
+/* Toggles visibility of map markers based on selected category. */
 function toggleFilter(id, element, mapManager) {
-    const yaEstabaActivo = element.classList.contains('active');
+    const wasAlreadyActive = element.classList.contains('active');
     document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
 
-    const filtroAAplicar = yaEstabaActivo ? 'todos' : id;
+    const filterToApply = wasAlreadyActive ? 'all' : id;
 
-    if (!yaEstabaActivo) {
+    if (!wasAlreadyActive) {
         element.classList.add('active');
     }
 
-    // Recorremos todos los marcadores usando la nueva estructura
+    /* Filters markers by comparing category and assigning to correct layers. */
     mapManager.markers.forEach((marker) => {
-        const catMarcador = String(marker.categoria).toLowerCase().trim();
-        const catFiltro = String(filtroAAplicar).toLowerCase().trim();
+        const markerCategory = String(marker.category).toLowerCase().trim();
+        const filterId = String(filterToApply).toLowerCase().trim();
 
-        if (catFiltro === 'todos' || catMarcador === catFiltro) {
-            // Decidimos en qué capa volver a ponerlo
+        if (filterId === 'all' || markerCategory === filterId) {
             if (marker.markerType === 'draft') {
                 marker.addTo(mapManager.draftLayer);
             } else {
                 marker.addTo(mapManager.publicLayer);
             }
         } else {
-            marker.remove(); // Se quita visualmente pero sigue en MapManager.markers
+            marker.remove(); 
         }
     });
 }

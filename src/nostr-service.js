@@ -7,34 +7,33 @@ export class NostrService {
         this.pool = new SimplePool();
     }
 
-subscribeToAnchors(onEvent) {
+    /* Subscribes to Kind 1 events with the spatial_anchor tag across configured relays. */
+    subscribeToAnchors(onEvent) {
+        const mainFilter = {
+            kinds: [1],
+            "#t": ["spatial_anchor"]
+        };
 
-    const filtroPrincipal = {
-        kinds: [1],
-        "#t": ["spatial_anchor"]
-    };
+        console.log("🔍 Sending global filter:", mainFilter);
 
-    console.log("🔍 Enviando filtro único:", filtroPrincipal);
-
-    /*const filtrosParaEnviar = [filtroPrincipal];*/
-    
-    return this.pool.subscribeMany(
-        this.relays, 
-        filtroPrincipal, 
-        {
-            onevent(event) {
-                if (event && event.id) {
-                    console.log("✨ ¡Punto encontrado!", event.id);
-                    onEvent(event);
+        return this.pool.subscribeMany(
+            this.relays, 
+            mainFilter, 
+            {
+                onevent(event) {
+                    if (event && event.id) {
+                        console.log("✨ Spot found!", event.id);
+                        onEvent(event);
+                    }
+                },
+                oneose() {
+                    console.log("✅ Clean connection: History synchronized.");
                 }
-            },
-            oneose() {
-                console.log("✅ Conexión limpia: Historial sincronizado.");
             }
-        }
-    );
-}
+        );
+    }
     
+    /* Signs and publishes a standard Kind 1 anchor event. */
     async publishAnchor(eventData) {
         const event = {
             kind: 1,
@@ -45,84 +44,84 @@ subscribeToAnchors(onEvent) {
         };
 
         try {
-            // Llama a la extensión del navegador para firmar
+            /* Requests signature from the browser extension (NIP-07). */
             const signedEvent = await window.nostr.signEvent(event);
             
-            // Publica el evento firmado en todos los relays
+            /* Broadcasts the signed event to all relays. */
             await Promise.any(this.pool.publish(this.relays, signedEvent));
             
-            console.log("🚀 Evento anclado y publicado:", signedEvent);
+            console.log("🚀 Event anchored and published:", signedEvent);
             return signedEvent;
         } catch (err) {
-            console.error("❌ Error en el proceso de anclaje:", err);
+            console.error("❌ Error in anchoring process:", err);
             throw err;
         }
     }
 
+    /* Fetches user profile metadata (Kind 0) with a 3-second timeout. */
     async getUserProfile(pubkey) {
         const filter = { kinds: [0], authors: [pubkey], limit: 1 };
         
         try {
-            // Intentamos obtener el perfil con un límite de tiempo de 3 segundos
             const event = await this.pool.get(this.relays, filter, { timeout: 3000 });
             
             if (event && event.content) {
                 return JSON.parse(event.content);
             }
         } catch (e) {
-            console.warn("⚠️ No se pudo cargar el perfil para:", pubkey);
+            console.warn("⚠️ Could not load profile for:", pubkey);
         }
         return null;
     }
 
-    // Método para eliminar un evento (ejemplo de NIP-09)
+    /* Requests a Kind 5 event deletion (NIP-09) for a specific event ID. */
+    async deleteEvent(eventId) {
+        const event = {
+            kind: 5,
+            pubkey: AuthManager.userPubkey, 
+            created_at: Math.floor(Date.now() / 1000),
+            tags: [['e', eventId]],
+            content: 'Removing old spatial anchor'
+        };
 
-async deleteEvent(eventId) {
-    const event = {
-        kind: 5,
-        pubkey: AuthManager.userPubkey, 
-        created_at: Math.floor(Date.now() / 1000),
-        tags: [['e', eventId]],
-        content: 'Eliminando anclaje antiguo'
-    };
-
-    try {
-        const signedEvent = await window.nostr.signEvent(event);
-        // Usamos el enviador puro para no pedir firma otra vez
-        return await this.sendOnly(signedEvent); 
-    } catch (err) {
-        console.error("Error al firmar borrado:", err);
-        return false;
+        try {
+            const signedEvent = await window.nostr.signEvent(event);
+            /* Broadcasts without requesting additional signatures. */
+            return await this.broadcastEvent(signedEvent); 
+        } catch (err) {
+            console.error("Error signing deletion:", err);
+            return false;
+        }
     }
-}
 
-async fetchEvents(filter) {
-    try {
-        // querySync es el método estándar de nostr-tools (SimplePool) para obtener una lista única
-        return await this.pool.querySync(this.relays, filter);
-    } catch (err) {
-        console.error("Error al consultar eventos:", err);
-        return [];
+    /* Queries relays for a specific set of events based on a filter. */
+    async fetchEvents(filter) {
+        try {
+            return await this.pool.querySync(this.relays, filter);
+        } catch (err) {
+            console.error("Error fetching events:", err);
+            return [];
+        }
     }
-}
 
-async publishEvent(event) {
-    try {
-        const signedEvent = await window.nostr.signEvent(event);
-        return await this.sendOnly(signedEvent); // Llama al enviador puro
-    } catch (err) {
-        return false;
+    /* Generic method to sign and broadcast any provided event structure. */
+    async publishEvent(event) {
+        try {
+            const signedEvent = await window.nostr.signEvent(event);
+            return await this.broadcastEvent(signedEvent); 
+        } catch (err) {
+            return false;
+        }
     }
-}
 
-async sendOnly(signedEvent) {
-    try {
-        // Publicamos en los relays sin pedir firmas
-        await Promise.all(this.pool.publish(this.relays, signedEvent));
-        return true;
-    } catch (err) {
-        console.error("Fallo de red en sendOnly:", err);
-        return false;
+    /* Internal method to push signed events to the network via SimplePool. */
+    async broadcastEvent(signedEvent) { /* Renamed from sendOnly */
+        try {
+            await Promise.all(this.pool.publish(this.relays, signedEvent));
+            return true;
+        } catch (err) {
+            console.error("Network failure during broadcast:", err);
+            return false;
+        }
     }
-}
 }

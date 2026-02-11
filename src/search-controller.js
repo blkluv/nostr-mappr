@@ -1,4 +1,3 @@
-
 export function initSearch(mapManager) {
     const searchInput = document.getElementById('search-input');
     const searchBtn = document.getElementById('btn-search');
@@ -6,31 +5,31 @@ export function initSearch(mapManager) {
 
     if (!searchInput || !searchBtn || !btnClear) return;
 
-    async function ejecutarBusqueda() {
+    /* Logic to execute address search using mapManager. */
+    async function executeSearch() {
         const query = searchInput.value.trim();
         if (!query) return;
 
         try {
-            // Usamos el mapManager que recibe la función
             await mapManager.searchAddress(query);
-            console.log(`Búsqueda exitosa: ${query}`);
+            console.log(`Search successful: ${query}`);
         } catch (err) {
-            showToast("📍 Lo sentimos, no encontramos esa dirección", "error");
+            window.showToast("📍 Sorry, we couldn't find that location", "error");
         }
     }
 
-    // Listeners (Copiados de tu main.js líneas 254-273)
-    searchBtn.onclick = ejecutarBusqueda;
+    searchBtn.onclick = executeSearch;
 
     searchInput.onkeypress = (e) => {
-        if (e.key === 'Enter') ejecutarBusqueda();
+        if (e.key === 'Enter') executeSearch();
     };
 
-    // Lógica de la 'X' (Línea 319 de tu main.js)
+    /* Controls visibility of the 'X' clear button based on input length. */
     searchInput.addEventListener('input', () => {
         btnClear.style.display = searchInput.value.length > 0 ? 'block' : 'none';
     });
 
+    /* Clears search results and resets the map selection state. */
     btnClear.addEventListener('click', () => {
         searchInput.value = '';
         btnClear.style.display = 'none';

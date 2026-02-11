@@ -1,21 +1,19 @@
-
 import { AuthManager } from './auth.js';
 import { CATEGORIAS } from './categories.js';
 
-// --- ELEMENTOS FLOTANTES ---
+/* --- FLOATING UI ELEMENTS --- */
 const userNameMini = document.getElementById('user-name-mini');
 const userAvatarMini = document.getElementById('user-avatar-small');
 const userPubkeyMini = document.getElementById('user-pubkey-mini');
 
-// --- ELEMENTOS DE MODAL ---
+/* --- MODAL ELEMENTS --- */
 const modalContainer = document.getElementById('modal-container');
 const modalContent = document.getElementById('modal-content');
 
-/* Genera el HTML dinámico para el modal de perfil basado en el estado de sesión. */
-
+/* Generates dynamic HTML for the profile modal based on session state. */
 function getProfileModalHTML(profile = null) {
     if (profile) {
-        // VISTA: USUARIO CONECTADO
+        /* UI: CONNECTED USER */
         const npubShort = AuthManager.userPubkey.substring(0, 10) + '...';
         return `
             <div class="profile-modal-inner connected-mode">
@@ -28,171 +26,170 @@ function getProfileModalHTML(profile = null) {
 
                 <div class="profile-stats-grid">
                     <div class="stat-box"><strong>24.5K</strong><span>⚡ SATS</span></div>
-                    <div class="stat-box"><strong>${profile.following || 0}</strong><span>SIGUIENDO</span></div>
-                    <div class="stat-box"><strong>${profile.followers || 0}</strong><span>SEGUIDORES</span></div>
+                    <div class="stat-box"><strong>${profile.following || 0}</strong><span>FOLLOWING</span></div>
+                    <div class="stat-box"><strong>${profile.followers || 0}</strong><span>FOLLOWERS</span></div>
                 </div>
 
                 <div class="profile-settings-section">
-                    <p class="profile-bio">${profile.about || 'Sin descripción en Nostr.'}</p>
+                    <p class="profile-bio">${profile.about || 'No description provided on Nostr.'}</p>
                     <button class="btn-settings-item"><i class="fas fa-user-gear"></i> Profile Settings</button>
                 </div>
 
-                <button id="btn-modal-logout" class="btn-logout-modal">CERRAR SESIÓN</button>
+                <button id="btn-modal-logout" class="btn-logout-modal">LOG OUT</button>
             </div>
         `;
     } else {
-        // VISTA: INVITADO
+        /* UI: GUEST MODE */
         return `
             <div class="profile-modal-inner guest-mode">
                 <button class="close-btn" onclick="closeModal()">✕</button>
                 <div class="guest-header">
                     <div class="guest-icon-circle"><i class="fas fa-user-secret"></i></div>
-                    <h2>Modo Invitado</h2>
-                    <p>Conecta tu identidad Nostr para empezar a anclar lugares en el mapa.</p>
+                    <h2>Guest Mode</h2>
+                    <p>Connect your Nostr identity to start anchoring places on the map.</p>
                 </div>
                 <button id="btn-modal-login" class="btn-login-modal">
-                    <i class="fas fa-key"></i> CONECTAR CON ALBY / NOS2X
+                    <i class="fas fa-key"></i> CONNECT WITH ALBY / NOS2X
                 </button>
             </div>
         `;
     }
 }
 
+/* Generates HTML for the temporary Draft modal. */
 export function getDraftModalHTML(lat, lng) {
-    const opciones = CATEGORIAS.map(cat => `<option value="${cat.id}">${cat.label}</option>`).join('');
+    const nLat = Number(lat);
+    const nLng = Number(lng);
+    const options = CATEGORIAS.map(cat => `<option value="${cat.id}">${cat.label}</option>`).join('');
     return `
         <div class="profile-modal-inner draft-modal">
             <button class="close-btn" id="btn-close-draft">✕</button>
             <div class="profile-main-header">
-                <h2 style="margin-top: 10px;">Anclaje Provisorio</h2>
+                <h2 style="margin-top: 10px;">Provisional Anchor</h2>
                 <span class="pubkey-badge">📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}</span>
             </div>
 
             <div class="form-group" style="width: 100%; text-align: left;">
-                <label>TÍTULO DEL LUGAR</label>
-                <input type="text" id="draft-title" placeholder="Ej: Café de la Esquina..." 
+                <label>PLACE TITLE</label>
+                <input type="text" id="draft-title" placeholder="e.g., Corner Café..." 
                        style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); margin-top: 5px;">
             </div>
 
             <div class="form-group" style="width: 100%; text-align: left; margin-bottom: 15px;">
-                <label>CATEGORÍA</label>
+                <label>CATEGORY</label>
                 <select id="draft-category" style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); margin-top: 5px;">
-                    <option value="">Seleccionar categoría...</option>
-                    ${opciones}
+                    <option value="">Select category...</option>
+                    ${options}
                 </select>
             </div>
             
             <div class="photo-upload-zone" id="upload-zone" style="width: 100%; border: 2px dashed rgba(88, 81, 219, 0.3); padding: 20px; border-radius: 20px; text-align: center; cursor: pointer; background: rgba(255,255,255,0.3);">
                 <i class="fas fa-camera" style="font-size: 24px; color: #8e44ad; margin-bottom: 10px;"></i>
-                <p style="font-size: 11px; font-weight: bold; color: #8e44ad; margin: 0;">SUBIR O TOMAR FOTO</p>
+                <p style="font-size: 11px; font-weight: bold; color: #8e44ad; margin: 0;">UPLOAD OR TAKE PHOTO</p>
                 <input type="file" id="draft-photo" accept="image/*" multiple style="display: none;">
             </div>
             <div id="preview-container" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;"></div>
 
             <button id="btn-save-draft" class="btn-primary">
-                GUARDAR EN DIARIO
+                SAVE TO JOURNAL
             </button>
         </div>
     `;
 }
 
-/* Actualiza la información visible en el botón flotante de usuario. */
-
+/* Updates visible info on the floating user button. */
 export function updateFloatingUser(profile = null) {
     if (profile) {
-        userNameMini.textContent = profile.display_name || profile.name || "Usuario";
+        userNameMini.textContent = profile.display_name || profile.name || "User";
         if (profile.picture) userAvatarMini.src = profile.picture;
         
         const npubShort = AuthManager.userPubkey ? AuthManager.userPubkey.substring(0, 8) : '...';
         userPubkeyMini.textContent = '@' + npubShort;
     } else {
-        userNameMini.textContent = "Invitado";
+        userNameMini.textContent = "Guest";
         userAvatarMini.src = "https://www.gravatar.com/avatar/0?d=mp";
         userPubkeyMini.textContent = "@...";
     }
 }
 
-/* Abre el contenedor de modales e inyecta el HTML proporcionado. */
+/* Opens the modal container and injects provided HTML. */
 export function openModal(html) {
     modalContent.innerHTML = html;
     modalContainer.style.display = 'flex';
 }
 
-/* Cierra y limpia el modal. */
+/* Closes and clears the modal. */
 export function closeModal() {
     modalContainer.style.display = 'none';
     modalContent.innerHTML = '';
 }
 
-
-
-// Definición de estados centralizada para escalabilidad futura
-const ESTADOS_MAPA = {
-    1: { label: 'Anclado', class: 'public', canPublish: false },
-    30024: { label: 'Borrador', class: 'draft', canPublish: true }
+/* Centralized state definitions for scalability. */
+const ANCHOR_STATES = {
+    1: { label: 'ANCHORED', class: 'public', canPublish: false },
+    30024: { label: 'DRAFT', class: 'draft', canPublish: true }
 };
 
-export function getJournalModalHTML(eventos = []) {
-    const filas = eventos.map(ev => {
-        // Obtenemos la configuración del estado o un fallback seguro
-        const config = ESTADOS_MAPA[ev.kind] || { label: 'Desconocido', class: 'unknown', canPublish: false };
+/* Generates dynamic HTML for the Journal/Logbook table. */
+export function getJournalModalHTML(entries = []) {
+    const rows = entries.map(ev => {
+        const config = ANCHOR_STATES[ev.kind] || { label: 'Unknown', class: 'unknown', canPublish: false };
         
-        // 1. Lógica robusta para títulos
-        const titulo = ev.kind === 1 
-            ? (ev.content.split('\n\n')[0] || "Anclaje Público") 
-            : (ev.tags.find(t => t[0] === 'title')?.[1] || 'Sin título');
+        /* 1. Logic for dynamic titles. */
+        const title = ev.kind === 1 
+            ? (ev.content.split('\n\n')[0] || "Public Anchor") 
+            : (ev.tags.find(t => t[0] === 'title')?.[1] || 'Untitled');
 
-        // 2. Coordenadas y Fecha
+        /* 2. Coordinates and Date. */
         const coords = ev.tags.find(t => t[0] === 'g')?.[1] || '0,0';
         const [lat, lng] = coords.split(',');
-        const fecha = new Date(ev.created_at * 1000).toLocaleDateString();
+        const date = new Date(ev.created_at * 1000).toLocaleDateString();
         
-        // 3. Lógica robusta de categorías
+        /* 3. Robust category logic. */
         const catId = ev.tags.find(t => t[0] === 't' && t[1] !== 'spatial_anchor')?.[1];
-        const infoCat = CATEGORIAS.find(c => c.id === catId);
-        const categoriaTexto = infoCat ? infoCat.label : '-';
+        const catInfo = CATEGORIAS.find(c => c.id === catId);
+        const categoryText = catInfo ? catInfo.label : '-';
 
-        // 4. Badge de estado dinámico pero con tus estilos
+        /* 4. Dynamic status badge. */
         const statusBadge = `<span class="status-pill ${config.class}">${config.label}</span>`;
 
         return `
             <tr>
-                <td class="journal-date">${fecha}</td>
-                <td style="font-weight: 700;">${titulo}</td>
-                <td style="color: #5851db; font-weight: 600;">${categoriaTexto}</td>
+                <td class="journal-date">${date}</td>
+                <td style="font-weight: 700;">${title}</td>
+                <td style="color: #5851db; font-weight: 600;">${categoryText}</td>
                 <td style="text-align: center;">${statusBadge}</td>
                 <td>
                     <div class="actions-row">
                     <button class="btn-action-icon" 
                         onclick="window.centerMapAndOpenPopup('${ev.id}', ${lat}, ${lng})" 
-                        title="Ver en mapa">📍</button>
-                        ${config.canPublish ? `<button class="btn-action-icon" onclick="window.completeAnchor('${ev.id}')">🚀</button>` : ''}
-                        <button class="btn-action-icon" onclick="window.deleteDraft('${ev.id}')">🗑️</button>
+                        title="View on Map">📍</button>
+                        ${config.canPublish ? `<button class="btn-action-icon" onclick="window.completeAnchor('${ev.id}')" title="Publish">🚀</button>` : ''}
+                        <button class="btn-action-icon" onclick="window.deleteEntry('${ev.id}')" title="Delete">🗑️</button>
                     </div>
                 </td>
             </tr>
         `;
     }).join('');
 
-    // Estructura de contenedores
     return `
         <div class="profile-modal-inner" style="max-width: 800px;">
             <button class="close-btn" id="btn-close-journal">✕</button>
-            <h2 style="font-size: 24px; font-weight: 800; color: #1a1a1a; align-self: center;">Diario de anclajes</h2>
+            <h2 style="font-size: 24px; font-weight: 800; color: #1a1a1a; align-self: center;">Anchor Journal</h2>
             
             <div class="journal-white-container">
                 <table class="journal-table">
                     <thead>
                         <tr>
-                            <th>Fecha</th>
-                            <th>Título</th>
-                            <th>Categoría</th>
-                            <th>Estado</th>
-                            <th style="text-align: center;">Acción</th>
+                            <th>Date</th>
+                            <th>Title</th>
+                            <th>Category</th>
+                            <th>Status</th>
+                            <th style="text-align: center;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${filas || '<tr><td colspan="6" style="text-align:center; padding: 40px; color: #999;">Aún no tienes registros.</td></tr>'}
+                        ${rows || '<tr><td colspan="5" style="text-align:center; padding: 40px; color: #999;">No entries found yet.</td></tr>'}
                     </tbody>
                 </table>
             </div>
@@ -200,10 +197,8 @@ export function getJournalModalHTML(eventos = []) {
     `;
 }
 
-/* Inicializa los eventos de los botones flotantes. */
-
+/* Initializes floating button events. */
 export function initUI(nostrInstance) {
-
     const userBtn = document.getElementById('user-floating-btn'); 
     const modalContainer = document.getElementById('modal-container');
 
@@ -228,48 +223,41 @@ export function initUI(nostrInstance) {
             });
 
             const closeBtn = modalContent.querySelector('.close-btn');
-                if (closeBtn) {
-                closeBtn.onclick = () => closeModal();
-}
+            if (closeBtn) closeBtn.onclick = () => closeModal();
         });
     }
 
-    // 2. Click en PoP
+    /* Quick PoP Button Logic. */
     const btnQuickPop = document.getElementById('btn-quick-pop');
-
-            btnQuickPop?.addEventListener('click', async () => {
-        // 1. Efecto visual de carga
+    btnQuickPop?.addEventListener('click', async () => {
         const originalContent = btnQuickPop.innerHTML;
         btnQuickPop.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; 
         btnQuickPop.style.opacity = "0.7";
 
         try {
-            // 2. Pedimos ubicación
             const pos = await window.map.getCurrentLocation();
-            
             window.dispatchEvent(new CustomEvent('trigger-pop', { 
                 detail: { lat: pos.lat, lng: pos.lon } 
             }));
         } catch (err) {
-            showToast("📍 Error de ubicación", "error");
+            showToast("📍 Location Error", "error");
         } finally {
-            // 3. Restauramos el botón
             btnQuickPop.innerHTML = originalContent;
             btnQuickPop.style.opacity = "1";
         }
     });
 
-    // 3. Click en Diario
+    /* Journal Button Click Logic. */
     document.getElementById('btn-open-journal')?.addEventListener('click', async () => {
         if (!AuthManager.isLoggedIn()) {
-            showToast("Debes conectar tu identidad Nostr para ver tu Diario.", "error");
+            showToast("Log in to your Nostr identity to see your Journal.", "error");
             return;
         }
 
-        // Abrimos el modal con un estado de carga inicial
+        /* Open modal with initial loading state. */
         openModal(getJournalModalHTML([])); 
         
-        // Llamamos a la función global que definiremos en main.js
+        /* Calls global function defined in main.js. */
         if (window.fetchAndShowJournal) {
             window.fetchAndShowJournal();
         }
@@ -278,12 +266,12 @@ export function initUI(nostrInstance) {
         if (closeBtn) closeBtn.onclick = () => closeModal();
     });
 
-    // Cerrar modal al hacer clic fuera
+    /* Close modal when clicking outside. */
     modalContainer?.addEventListener('click', (e) => {
         if (e.target === modalContainer) closeModal();
     });
 
-    // Actualización inicial del botón flotante
+    /* Initial floating button update. */
     if (AuthManager.isLoggedIn()) {
         const pubkey = AuthManager.userPubkey;
         const cachedProfile = AuthManager.profileCache[pubkey];
@@ -300,7 +288,10 @@ export function initUI(nostrInstance) {
     }
 }
 
+/* Generates HTML for the final Publication modal. */
 export function getPublishModalHTML(lat, lng) {
+    const nLat = Number(lat);
+    const nLng = Number(lng);
     const categoryOptions = CATEGORIAS.map(cat => 
         `<option value="${cat.id}">${cat.label}</option>`
     ).join('');
@@ -308,21 +299,21 @@ export function getPublishModalHTML(lat, lng) {
     return `
         <div class="modal-card glass-panel-modal">
             <button id="btn-close-publish" class="close-btn-alt">×</button>
-            <h2 class="modal-title">🚀 Publicar Anclaje</h2>
+            <h2 class="modal-title">🚀 Publish Anchor</h2>
             <p class="modal-coords">📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}</p>
             
             <div class="form-group">
-                <label>NOMBRE DEL LUGAR</label>
-                <input type="text" id="pub-title" class="glass-input" placeholder="Ej: Café de la Esquina..">
+                <label>PLACE NAME</label>
+                <input type="text" id="pub-title" class="glass-input" placeholder="e.g., Corner Café...">
             </div>
 
             <div class="form-group">
-                <label>DESCRIPCIÓN / RESEÑA</label>
-                <textarea id="pub-description" class="glass-textarea" placeholder="Cuéntanos por qué este lugar es especial..."></textarea>
+                <label>DESCRIPTION / REVIEW</label>
+                <textarea id="pub-description" class="glass-textarea" placeholder="Tell us why this place is special..."></textarea>
             </div>
 
             <div class="form-group">
-                <label>CATEGORÍA</label>
+                <label>CATEGORY</label>
                 <select id="pub-category" class="glass-select">
                     ${categoryOptions} 
                 </select>
@@ -331,15 +322,16 @@ export function getPublishModalHTML(lat, lng) {
             <div id="pub-upload-zone" class="upload-zone-publish">
                 <input type="file" id="pub-photo" multiple accept="image/*" style="display: none;">
                 <i class="fas fa-camera"></i>
-                <p>SUBIR O TOMAR FOTO</p>
+                <p>UPLOAD OR TAKE PHOTO</p>
             </div>
             <div id="pub-preview-container" class="preview-grid"></div>
 
-            <button id="btn-do-publish" class="btn-primary-publish">PUBLICAR EN NOSTR</button>
+            <button id="btn-do-publish" class="btn-primary-publish">PUBLISH TO NOSTR</button>
         </div>
     `;
 }
 
+/* Renders a toast notification on screen. */
 export function showToast(message, type = 'success', duration = 3000) {
     let container = document.querySelector('.toast-container');
     if (!container) {
@@ -356,7 +348,6 @@ export function showToast(message, type = 'success', duration = 3000) {
 
     container.appendChild(toast);
 
-    // Animación de salida y limpieza
     setTimeout(() => {
         toast.style.opacity = '0';
         toast.style.transform = 'translateY(20px) scale(0.9)';
@@ -367,6 +358,7 @@ export function showToast(message, type = 'success', duration = 3000) {
 
 window.showToast = showToast;
 
+/* Generates HTML for the confirmation modal. */
 export function getConfirmModalHTML(message, onConfirm) {
     window.executeConfirmAction = () => {
         onConfirm();
@@ -376,17 +368,17 @@ export function getConfirmModalHTML(message, onConfirm) {
     return `
         <div class="modal-card glass-panel-modal" style="max-width: 320px; text-align: center; padding: 30px;">
             <div style="font-size: 40px; margin-bottom: 15px;">⚠️</div>
-            <h3 style="color: #5851db; margin-bottom: 10px; font-size: 20px;">¿Confirmar acción?</h3>
+            <h3 style="color: #5851db; margin-bottom: 10px; font-size: 20px;">Confirm Action?</h3>
             <p style="font-size: 14px; color: #555; line-height: 1.5; margin-bottom: 25px;">${message}</p>
             
             <div style="display: flex; gap: 12px; justify-content: center;">
                 <button onclick="window.closeModal()" class="glass-input" 
                         style="margin-top:0; cursor:pointer; font-weight:700; background: rgba(0,0,0,0.05);">
-                    CANCELAR
+                    CANCEL
                 </button>
                 <button onclick="window.executeConfirmAction()" class="btn-primary-publish" 
                         style="margin-top:0; background: #e74c3c; padding: 10px 20px; flex: 1;">
-                    ELIMINAR
+                    DELETE
                 </button>
             </div>
         </div>

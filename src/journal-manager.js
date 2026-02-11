@@ -2,16 +2,17 @@ import { AuthManager } from './auth.js';
 import { openModal, closeModal, getJournalModalHTML, getConfirmModalHTML } from './ui-controller.js';
 import { showToast } from './ui-controller.js';
 
+/* JournalManager: Handles the logic for the user's personal logbook, managing both public anchors and drafts. */
 export class JournalManager {
     constructor(mapManager, nostrService) {
         this.map = mapManager;
         this.nostr = nostrService;
-        this.drafts = [];
+        this.entries = []; 
         this.isSyncing = false;
     }
 
-    /* Sincroniza borradores desde la red y los pinta en el mapa */
-    async syncDrafts() {
+    /* Synchronizes logbook entries from the network and renders them on the map. */
+    async syncJournal() { 
         if (!AuthManager.isLoggedIn() || this.isSyncing) return; 
 
         this.isSyncing = true;
@@ -23,99 +24,94 @@ export class JournalManager {
         };
 
         try {
-            const nuevosEventos = await this.nostr.fetchEvents(filters);
+            const newEvents = await this.nostr.fetchEvents(filters);
             
-            // Verificación de cambios reales: solo procesamos si el total de eventos cambió
-            if (nuevosEventos.length === this.drafts.length) {
+            /* Check for actual changes: only process if the count differs. */
+            if (newEvents.length === this.entries.length) {
                 this.isSyncing = false;
                 return; 
             }
 
-            this.drafts = nuevosEventos.sort((a, b) => b.created_at - a.created_at);
-            this.map.clearDrafts();
-            this.drafts.forEach(ev => this.renderDraft(ev));
+            this.entries = newEvents.sort((a, b) => b.created_at - a.created_at);
+            this.map.clearDraftLayers(); 
+            this.entries.forEach(event => this.renderEntry(event)); 
             
         } catch (err) {
-            console.error("Error en sincronización", err);
+            console.error("Journal sync error", err);
         } finally {
             this.isSyncing = false;
         }
     }
 
-    /* Dibuja un borrador usando la lógica unificada de MapManager (Visual Consistency) */
-    renderDraft(event) {
+    /* Renders a single journal entry on the map using the MapManager logic. */
+    renderEntry(event) { 
         const coordsTag = event.tags.find(t => t[0] === 'g')?.[1];
         if (!coordsTag) return;
 
         const [lat, lng] = coordsTag.split(',');
-        const categoria = event.tags.find(t => t[0] === 't' && t[1] !== 'spatial_anchor')?.[1] || 'todos';
+        const category = event.tags.find(t => t[0] === 't' && t[1] !== 'spatial_anchor')?.[1] || 'all';
 
         const profile = AuthManager.profileCache[event.pubkey] || null;
 
-        // Usamos el generador de popups de ui-map con isDraft = true
-        const popupHTML = this.map.createPopupHTML(event, profile, categoria, true);
+        const isDraft = event.kind === 30024;
+        const popupHTML = this.map.createPopupHTML(event, profile, category, isDraft);
 
-        // addMarker ahora se encarga de que sea NARANJA
-        this.map.addMarker(event.id, parseFloat(lat), parseFloat(lng), popupHTML, categoria, 'draft');
+        const type = isDraft ? 'draft' : 'public';
+        this.map.addMarker(event.id, parseFloat(lat), parseFloat(lng), popupHTML, category, type);
     }
 
-    /* Abre el modal del diario con los datos ya cargados */
+    /* Opens the journal modal with current data and updates content in background. */
     async openJournal() {
         if (!AuthManager.isLoggedIn()) {
-            showToast("🔑 Debes conectar tu identidad Nostr.", "error");
+            showToast("🔑 You must connect your Nostr identity.", "error");
             return;
         }
 
-        // 1. Abrimos el modal con lo que tenemos para dar feedback inmediato
-        openModal(getJournalModalHTML(this.drafts));
+        /* 1. Initial render with local data. */
+        openModal(getJournalModalHTML(this.entries));
         
-        // 2. Sincronizamos en segundo plano
-        await this.syncDrafts(); 
+        /* 2. Background synchronization. */
+        await this.syncJournal(); 
         
-        // 3. RE-INYECTAMOS solo si hubo cambios (esto evita el parpadeo y los logs infinitos)
+        /* 3. Re-render only if modal is still open and data has updated. */
         const modalContent = document.getElementById('modal-content');
         if (modalContent) {
-            modalContent.innerHTML = getJournalModalHTML(this.drafts);
-            this.setupJournalEvents(); // Re-vinculamos el botón de cerrar
+            modalContent.innerHTML = getJournalModalHTML(this.entries);
+            this.setupJournalEvents();
         }
     }
 
-    // Función auxiliar para no repetir código de eventos
+    /* Sets up the event listeners for the journal modal UI. */
     setupJournalEvents() {
         const closeBtn = document.getElementById('btn-close-journal');
         if (closeBtn) closeBtn.onclick = () => closeModal();
     }
 
-    
-    async deleteDraft(eventId) {
+    /* Deletes an entry (Kind 5) and removes its visual representation from the map. */
+    async deleteEntry(eventId) { 
         const performDelete = async () => {
-            // 1. Enviamos el Kind 5 a los relays (Crucial para Iris)
             const success = await this.nostr.deleteEvent(eventId);
             
             if (success) {
-                // 2. Buscamos el marcador en el mapa
                 const marker = this.map.markers.get(eventId);
                 if (marker) {
-                    // Removemos de ambas capas por seguridad
                     this.map.draftLayer.removeLayer(marker);
                     this.map.publicLayer.removeLayer(marker);
                     this.map.markers.delete(eventId);
                 }
                 
-                // 3. Limpiamos la lista interna de borradores
-                this.drafts = this.drafts.filter(d => d.id !== eventId);
+                this.entries = this.entries.filter(entry => entry.id !== eventId);
+                showToast("🗑️ Deleted successfully", "success");
                 
-                showToast("🗑️ Eliminado correctamente", "success");
-                
-                // 4. Cerramos/Actualizamos el diario
                 this.openJournal(); 
             } else {
-                showToast("❌ No se pudo procesar el borrado", "error");
+                showToast("❌ Could not process deletion", "error");
             }
         };
 
-        // Modal de confirmación estilizado
-        openModal(getConfirmModalHTML("¿Deseas eliminar permanentemente este punto? Esta acción enviará una solicitud de borrado a los relays.", performDelete));
+        openModal(getConfirmModalHTML(
+            "Do you want to permanently delete this anchor? This will send a deletion request to the relays.", 
+            performDelete
+        ));
     }
-      
 }

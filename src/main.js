@@ -1,149 +1,155 @@
-
-// --- 1. IMPORTACIONES (Suministros) ---
+/* --- 1. IMPORTS --- */
 import { MapManager } from './ui-map.js';
 import { NostrService } from './nostr-service.js';
-import { GeoLogic } from './geo-utils.js';
+import { GeoUtils } from './geo-utils.js';
 import { AuthManager } from './auth.js';
 import { JournalManager } from './journal-manager.js';
 
-// Controladores de Módulos
+/* Module Controllers */
 import { DraftController } from './draft-controller.js';
 import { UserActions } from './user-actions.js';
 import { initUI, openModal, closeModal } from './ui-controller.js';
 import { initFilters } from './filter-controller.js';
 import { initSearch } from './search-controller.js';
 
-// --- 2. CONFIGURACIÓN Y ESTADO INICIAL ---
+/* --- 2. CONFIGURATION AND INITIAL STATE --- */
 const RELAYS = ['wss://nos.lol', 'wss://relay.primal.net', 'wss://relay.damus.io']; 
 const ROSARIO_COORDS = [-32.9468, -60.6393];
-const eventosProcesados = new Set(); // Cache para evitar duplicados en el mapa
+const processedEvents = new Set(); /* Renamed from eventosProcesados */
 
-// --- 3. INSTANCIACIÓN DE SERVICIOS NÚCLEO ---
+/* --- 3. CORE SERVICES INSTANTIATION --- */
 const map = new MapManager('map', ROSARIO_COORDS); 
-window.map = map; // Referencia global necesaria para Leaflet
+window.map = map; /* Global reference for Leaflet */
 
 const nostr = new NostrService(RELAYS);
 const journal = new JournalManager(map, nostr);
 
-// --- 4. ORQUESTACIÓN DE RED (NOSTR) ---
-function iniciarSuscripcion() {
+/* --- 4. NETWORK ORCHESTRATION (NOSTR) --- */
+function startSubscription() {
     nostr.subscribeToAnchors(async (event) => {
-        if (eventosProcesados.has(event.id)) return;
-        eventosProcesados.add(event.id);
+        if (processedEvents.has(event.id)) return;
+        processedEvents.add(event.id);
 
-        const geoData = GeoLogic.getHashFromEvent(event);
-        if (geoData) {
-            let lat, lon;
-            
-            // Si geoData ya es un objeto (coordenadas directas), lo usamos
-            if (typeof geoData === 'object') {
-                lat = geoData.lat;
-                lon = geoData.lon;
-            } else {
-                // Si es un geohash, lo decodificamos
-                const decoded = GeoLogic.decode(geoData);
-                lat = decoded.lat;
-                lon = decoded.lon;
-            }
+        const geoData = GeoUtils.getHashFromEvent(event);
+        if (!geoData) return;
 
-            const profile = AuthManager.profileCache[event.pubkey] || null;
-            
-            // Aquí buscas la categoría. Al haber dos 't', find() devolverá el primero 
-            // que NO sea 'spatial_anchor', lo cual es correcto.
-            const tagCat = event.tags.find(t => t[0] === 't' && t[1] !== 'spatial_anchor');
-            const categoriaEvento = tagCat ? tagCat[1] : 'todos';
-
-            const popupHTML = map.createPopupHTML(event, profile, categoriaEvento);
-            map.addMarker(event.id, lat, lon, popupHTML, categoriaEvento);
+        const profile = await nostr.getUserProfile(event.pubkey);
+        
+        let lat, lng;
+        if (geoData.isRaw) {
+            lat = geoData.lat;
+            lng = geoData.lon;
+        } else {
+            const decoded = GeoUtils.decode(geoData);
+            lat = decoded.lat;
+            lng = decoded.lon;
         }
+
+        const category = event.tags.find(t => t[0] === 't' && t[1] !== 'spatial_anchor')?.[1] || 'all';
+        const popupHTML = map.createPopupHTML(event, profile, category, false);
+        
+        map.addMarker(event.id, lat, lng, popupHTML, category, 'public');
     });
 }
 
-// --- 5. INICIALIZACIÓN DE CONTROLADORES DE INTERFAZ ---
-initSearch(map);
-initFilters(map);
-initUI(nostr);
-
-// Sincronización de datos iniciales
-iniciarSuscripcion();
-journal.syncDrafts();
-
-// Posicionamiento inicial por GPS
-map.getCurrentLocation()
-    .then(pos => map.setView(pos.lat, pos.lon))
-    .catch(err => console.warn("Usando ubicación por defecto:", err));
-
-// --- 6. PUENTES GLOBALIZADOS (Window API) ---
-// Estos puentes permiten que el HTML y ui-controller invoquen lógica modular
-
-// Gestión del Diario
-window.fetchAndShowJournal = () => journal.openJournal();
-window.deleteDraft = (id) => journal.deleteDraft(id);
-window.centerMapAndHighlight = (lat, lng) => {
-    closeModal(); 
-    window.map.setView(lat, lng, 16); 
-    if (window.tempHighlightMarker) {
-        window.map.map.removeLayer(window.tempHighlightMarker);
-        window.tempHighlightMarker = null;
+/* --- 5. INITIALIZATION BOOTSTRAP --- */
+document.addEventListener('DOMContentLoaded', async () => {
+    initUI();
+    initFilters(map);
+    initSearch(map);
+    
+    /* Login check and journal sync */
+    if (await AuthManager.isLoggedIn()) {
+        await journal.syncJournal(); /* Updated to new name in JournalManager */
     }
-};
+    
+    startSubscription(); /* Updated to new name */
+});
 
-// Acciones Sociales
-window.followUser = (pubkey, name) => UserActions.followUser(pubkey, name);
-window.zapUser = (pubkey, name, titulo) => UserActions.zapUser(pubkey, name, titulo);
-window.borrarPunto = (eventId) => UserActions.borrarPunto(eventId, map, nostr);
+/* --- 6. GLOBAL INTERFACE BRIDGES (Exposed to window for onclick) --- */
 
-// Flujos de Anclaje y Publicación
-window.openDraftModal = (lat, lng) => DraftController.openDraftModal(lat, lng, map, nostr, journal);
-window.openReviewModal = (lat, lng) => DraftController.openReviewModal(lat, lng, map, nostr, journal);
-window.completeAnchor = (eventId) => {
-    const marker = map.markers.get(eventId);
-    if (!marker) return;
-    const { lat, lng } = marker.getLatLng();
-    DraftController.openPublishModal(eventId, lat, lng, map, nostr, journal);
-};
+/* Function to center map and open a specific anchor popup */
 window.centerMapAndOpenPopup = (eventId, lat, lng) => {
-    closeModal();
-    const marker = map.markers.get(eventId);
-    if (!marker) return;
+    closeModal(); 
+    map.map.flyTo([lat, lng], 18, { animate: true, duration: 1.5 });
+
     const onMoveEnd = () => {
         setTimeout(() => {
-            marker.openPopup(); 
+            const marker = map.markers.get(eventId);
+            if (marker) {
+                marker.openPopup();
+            }
             map.map.off('moveend', onMoveEnd);
         }, 100);
     };
+
     map.map.on('moveend', onMoveEnd);
-    map.map.flyTo([lat, lng], 18, {
-        animate: true,
-        duration: 1.5
-    });
 };
-// --- 7. EVENTOS DE MAPA Y UX ---
 
-// Lógica de "Point of Presence" (PoP)
-window.addEventListener('trigger-pop', (e) => {
-    const { lat, lng } = e.detail;
-    window.map.setView(lat, lng, 18);
-    if (window.tempPoPMarker) window.map.map.removeLayer(window.tempPoPMarker);
+/* Bridge for Review Modal */
+window.openReviewModal = (lat, lng) => {
+    DraftController.openReviewModal(lat, lng, map, nostr, journal);
+};
 
-    window.tempPoPMarker = L.marker([lat, lng], {
-        icon: window.map._createIcon('temp') 
-    }).addTo(window.map.map);
+/* Bridge for Draft Modal */
+window.openDraftModal = (lat, lng) => {
+    DraftController.openDraftModal(lat, lng, map, nostr, journal);
+};
 
-    window.tempPoPMarker.bindPopup(`
-        <div class="pop-decision-container">
-            <strong>📍 Ubicación Confirmada</strong>
-            <p>¿Cómo quieres registrar este punto?</p>
-            <div class="pop-btn-grid">
-                <button onclick="window.openReviewModal(${lat}, ${lng})" class="btn-pop-resena">📝 Review</button>
-                <button onclick="window.openDraftModal(${lat}, ${lng})" class="btn-pop-draft">💾 Draft</button>
+/* Bridge for Journal Modal */
+window.fetchAndShowJournal = () => {
+    journal.openJournal();
+};
+
+/* Bridge for Deleting entries */
+window.deleteEntry = (eventId) => { /* Renamed from deleteDraft to match JournalManager */
+    journal.deleteEntry(eventId);
+};
+
+/* Bridge for Completing/Publishing anchors from drafts */
+window.completeAnchor = (eventId) => {
+    const entry = journal.entries.find(e => e.id === eventId); /* Updated from drafts to entries */
+    if (entry) {
+        const coords = entry.tags.find(t => t[0] === 'g')?.[1];
+        if (coords) {
+            const [lat, lng] = coords.split(',').map(Number);
+            DraftController.openPublishModal(eventId, lat, lng, map, nostr, journal);
+        }
+    }
+};
+
+/* Bridge for Deleting public anchors (Kind 5) */
+window.deleteAnchor = (eventId) => {
+    UserActions.deleteAnchor(eventId, map, nostr, processedEvents);
+};
+
+/* --- 7. DIRECT MAP EVENTS --- */
+
+/* Double click to add markers */
+map.map.on('dblclick', (e) => {
+    if (!AuthManager.isLoggedIn()) {
+        window.showToast("🔑 Log in to add new points", "error");
+        return;
+    }
+    const { lat, lng } = e.latlng;
+    map.map.setView([lat, lng], map.map.getZoom());
+    
+    L.popup()
+        .setLatLng([lat, lng])
+        .setContent(`
+            <div class="pop-decision-container">
+                <strong>📍 Location Confirmed</strong>
+                <p>How do you want to register this spot?</p>
+                <div class="pop-btn-grid">
+                    <button onclick="window.openReviewModal(${lat}, ${lng})" class="btn-pop-resena">📝 Review</button>
+                    <button onclick="window.openDraftModal(${lat}, ${lng})" class="btn-pop-draft">💾 Draft</button>
+                </div>
             </div>
-        </div>
-    `, { closeButton: false, offset: [0, -10] }).openPopup();
-        showToast("📍 Punto detectado. Define tu registro.", "success");
+        `, { closeButton: false, offset: [0, -10] }).openPopup();
+        window.showToast("📍 Spot detected. Define your entry.", "success");
 });
 
-// Botón de geolocalización rápida
+/* Rapid Geolocation Button */
 document.getElementById('btn-locate-me').onclick = async (e) => {
     e.stopPropagation();
     const icon = e.currentTarget.querySelector('i');
@@ -151,21 +157,26 @@ document.getElementById('btn-locate-me').onclick = async (e) => {
     try {
         const pos = await map.getCurrentLocation();
         map.setView(pos.lat, pos.lon, 16);
-        showToast("📍 Ubicación actualizada", "success");
+        window.showToast("📍 Location updated", "success");
     } catch (err) {
-        showToast("📍 Error al obtener ubicación", "error");
+        window.showToast("📍 Error getting location", "error");
     } finally {
         icon.className = "fas fa-crosshairs";
     }
 };
 
-// Verificación de autoría en Popups
+/* Popup authorship verification */
 map.map.on('popupopen', (e) => {
     const container = e.popup._contentNode.querySelector('.popup-container');
     if (container) {
-        const pubkeyPunto = container.getAttribute('data-pubkey');
-        if (AuthManager.userPubkey === pubkeyPunto) {
-            container.classList.add('is-owner');
+        const entryPubkey = container.getAttribute('data-pubkey');
+        
+        /* ✅ CORRECCIÓN: Buscamos el botón por la clase 'owner-only' que definimos en ui-map.js */
+        const deleteBtn = container.querySelector('.btn-delete.owner-only');
+        
+        /* Si el pubkey del evento coincide con el del usuario logueado, mostramos el botón */
+        if (deleteBtn && AuthManager.isLoggedIn() && AuthManager.userPubkey === entryPubkey) {
+            deleteBtn.style.display = 'flex';
         }
     }
 });
