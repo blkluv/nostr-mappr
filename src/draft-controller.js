@@ -93,7 +93,7 @@ export const DraftController = {
             const desc = document.getElementById('pub-description').value.trim();
             const cat = document.getElementById('pub-category').value;
 
-            if (!title) return showToast("⚠️ El título es obligatorio", "error");
+            if (!title) return showToast("El título es obligatorio", "error");
 
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> PUBLICANDO...';
             btn.disabled = true;
@@ -105,22 +105,45 @@ export const DraftController = {
                     ["t", "spatial_anchor"],
                     ["t", cat],
                     ["g", `${lat},${lng}`],
-                    ["title", title]
+                    ["title", title],
+                    ["p", AuthManager.userPubkey]
                 ],
                 created_at: Math.floor(Date.now() / 1000)
             };
 
             try {
-                const success = await nostrService.publishEvent(publicEvent);
-                if (success) {
-                    if (eventId) await journalManager.deleteDraft(eventId);
-                    showToast("🚀 ¡Anclaje publicado con éxito!", "success"); 
-                    closeModal();
-                }
+                const success = await nostrService.publishEvent(publicEvent); // Firma 1 (Punto Azul)
+                // draft-controller.js
+                    if (success) {
+                        // Si el punto viene de un borrador (tiene eventId), lo limpiamos
+                        if (eventId) { 
+                            console.log("🗑️ Iniciando borrado de borrador naranja...");
+                            
+                            // 1. Borrado en Relays (Pedirá la 2da firma de Alby)
+                            await nostrService.deleteEvent(eventId); 
+                            
+                            // 2. Limpieza visual inmediata en el mapa
+                            const marker = journalManager.map.markers.get(eventId);                    
+                            if (marker) {
+                                journalManager.map.draftLayer.removeLayer(marker);
+                                journalManager.map.markers.delete(eventId);
+                            }
+                            
+                            // 3. Limpieza en la lista interna del Diario
+                            journalManager.drafts = journalManager.drafts.filter(d => d.id !== eventId);
+                        }
+                        
+                        // 4. Feedback final al usuario
+                        showToast("🚀 ¡Anclaje publicado con éxito!", "success");
+                        closeModal();
+                        
+                        // 5. Sincronización de seguridad tras 1 segundo
+                        setTimeout(() => journalManager.syncDrafts(), 1000);
+                    }
             } catch (err) {
-                console.error("Error publishing:", err);
-                btn.disabled = false;
-                btn.innerHTML = 'PUBLICAR EN NOSTR';
+                            console.error("Error publishing:", err);
+                            btn.disabled = false;
+                            btn.innerHTML = 'PUBLICAR EN NOSTR';
             }
         };
     },

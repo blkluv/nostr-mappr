@@ -66,24 +66,36 @@ export class JournalManager {
         await this.syncDrafts(); // Actualiza por si hay cambios nuevos
     }
 
+    
     async deleteDraft(eventId) {
-        // Definimos la acción de borrar
         const performDelete = async () => {
+            // 1. Enviamos el Kind 5 a los relays (Crucial para Iris)
             const success = await this.nostr.deleteEvent(eventId);
+            
             if (success) {
+                // 2. Buscamos el marcador en el mapa
                 const marker = this.map.markers.get(eventId);
-                if (marker) this.map.draftLayer.removeLayer(marker);
-                this.map.markers.delete(eventId);
+                if (marker) {
+                    // Removemos de ambas capas por seguridad
+                    this.map.draftLayer.removeLayer(marker);
+                    this.map.publicLayer.removeLayer(marker);
+                    this.map.markers.delete(eventId);
+                }
+                
+                // 3. Limpiamos la lista interna de borradores
                 this.drafts = this.drafts.filter(d => d.id !== eventId);
-                showToast("🗑️ Borrador eliminado", "success");
+                
+                showToast("🗑️ Eliminado correctamente", "success");
+                
+                // 4. Cerramos/Actualizamos el diario
                 this.openJournal(); 
             } else {
-                showToast("❌ No se pudo eliminar", "error");
+                showToast("❌ No se pudo procesar el borrado", "error");
             }
         };
 
-        // Abrimos el modal personalizado en lugar del confirm nativo
-        openModal(getConfirmModalHTML("Esta acción no se puede deshacer.", performDelete));
+        // Modal de confirmación estilizado
+        openModal(getConfirmModalHTML("¿Deseas eliminar permanentemente este punto? Esta acción enviará una solicitud de borrado a los relays.", performDelete));
     }
       
 }

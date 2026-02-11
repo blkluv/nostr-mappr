@@ -83,25 +83,15 @@ async deleteEvent(eventId) {
         pubkey: AuthManager.userPubkey, 
         created_at: Math.floor(Date.now() / 1000),
         tags: [['e', eventId]],
-        content: 'Eliminando anclaje de prueba'
+        content: 'Eliminando anclaje antiguo'
     };
 
     try {
         const signedEvent = await window.nostr.signEvent(event);
-        return await this.publish(signedEvent); 
+        // Usamos el enviador puro para no pedir firma otra vez
+        return await this.sendOnly(signedEvent); 
     } catch (err) {
-        console.error("Error al borrar:", err);
-        return false;
-    }
-}
-async publish(event) {
-    try {
-        // Publicamos en todos los relays configurados
-        await Promise.all(this.pool.publish(this.relays, event));
-        console.log("🚀 Evento de borrado (Kind 5) enviado.");
-        return true;
-    } catch (err) {
-        console.error("❌ Fallo al publicar el borrado:", err);
+        console.error("Error al firmar borrado:", err);
         return false;
     }
 }
@@ -118,15 +108,21 @@ async fetchEvents(filter) {
 
 async publishEvent(event) {
     try {
-        // Pedimos firma a la extensión (Alby/Nos2x)
         const signedEvent = await window.nostr.signEvent(event);
-        // Publicamos en los relays
-        await Promise.all(this.pool.publish(this.relays, signedEvent));
-        return true;
+        return await this.sendOnly(signedEvent); // Llama al enviador puro
     } catch (err) {
-        console.error("Fallo al publicar:", err);
         return false;
     }
 }
 
+async sendOnly(signedEvent) {
+    try {
+        // Publicamos en los relays sin pedir firmas
+        await Promise.all(this.pool.publish(this.relays, signedEvent));
+        return true;
+    } catch (err) {
+        console.error("Fallo de red en sendOnly:", err);
+        return false;
+    }
+}
 }
