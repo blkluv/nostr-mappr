@@ -135,18 +135,45 @@ window.deleteAnchor = (eventId) => {
 
 /* --- 7. DIRECT MAP EVENTS --- */
 
-/* Double click to add markers */
-map.map.on('dblclick', (e) => {
+/* Anchor a new point - btn-anchor */
+document.getElementById('btn-quick-pop').onclick = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (!AuthManager.isLoggedIn()) {
-        window.showToast("🔑 Log in to add new points", "error");
+        window.showToast("Log in to add new points", "error");
         return;
     }
-    const { lat, lng } = e.latlng;
-    map.map.setView([lat, lng], map.map.getZoom());
+
+    const btn = e.currentTarget;
+    const icon = btn.querySelector('i');
     
-    L.popup()
-        .setLatLng([lat, lng])
-        .setContent(`
+    /* ✅ REGLA 1: Definimos el icono de aguja como el original */
+    const originalClass = "fas fa-map-pin"; 
+    
+    const existingTemp = map.markers.get('temp-pop');
+    if (existingTemp) {
+        existingTemp.off();
+        map.map.removeLayer(existingTemp);
+        map.markers.delete('temp-pop');
+    }
+
+    btn.style.pointerEvents = "none";
+    
+    /* Solo cambiamos a la ruedita durante la carga */
+    icon.className = "fas fa-spinner fa-spin"; 
+
+    try {
+        const pos = await map.getCurrentLocation();
+        const lat = Number(pos.lat);
+        const lng = Number(pos.lon); 
+
+        map.map.setView([lat, lng], 18);
+        const tempMarker = map.addMarker('temp-pop', lat, lng, '', 'none', 'temp');
+
+        let clickedCloseX = false;
+
+        tempMarker.bindPopup(`
             <div class="pop-decision-container">
                 <strong>📍 Location Confirmed</strong>
                 <p>How do you want to register this spot?</p>
@@ -155,9 +182,37 @@ map.map.on('dblclick', (e) => {
                     <button onclick="window.openDraftModal(${lat}, ${lng})" class="btn-pop-draft">💾 Draft</button>
                 </div>
             </div>
-        `, { closeButton: false, offset: [0, -10] }).openPopup();
-        window.showToast("📍 Spot detected. Define your entry.", "success");
-});
+        `, { 
+            closeButton: true,
+            offset: [0, -10],
+            closeOnClick: true 
+        }).openPopup();
+
+        tempMarker.on('popupopen', () => {
+            const closeBtn = tempMarker.getPopup()._container.querySelector('.leaflet-popup-close-button');
+            if (closeBtn) {
+                closeBtn.onmousedown = () => { clickedCloseX = true; };
+            }
+        });
+
+        tempMarker.on('popupclose', () => {
+            if (clickedCloseX) {
+                map.map.removeLayer(tempMarker);
+                map.markers.delete('temp-pop');
+            }
+        });
+
+        window.showToast("Spot detected. Define your entry.", "success");
+
+    } catch (err) {
+        console.error("PoP Error:", err);
+        window.showToast("Location Error", "error");
+    } finally {
+        btn.style.pointerEvents = "auto";
+        /* ✅ REGLA 2: Siempre volvemos a la aguja, nunca al '+' */
+        icon.className = originalClass; 
+    }
+};
 
 /* Rapid Geolocation Button */
 document.getElementById('btn-locate-me').onclick = async (e) => {
@@ -167,9 +222,9 @@ document.getElementById('btn-locate-me').onclick = async (e) => {
     try {
         const pos = await map.getCurrentLocation();
         map.setView(pos.lat, pos.lon, 16);
-        window.showToast("📍 Location updated", "success");
+        window.showToast("Location updated", "success");
     } catch (err) {
-        window.showToast("📍 Error getting location", "error");
+        window.showToast("Error getting location", "error");
     } finally {
         icon.className = "fas fa-crosshairs";
     }
@@ -180,11 +235,8 @@ map.map.on('popupopen', (e) => {
     const container = e.popup._contentNode.querySelector('.popup-container');
     if (container) {
         const entryPubkey = container.getAttribute('data-pubkey');
-        
-        /* ✅ CORRECCIÓN: Buscamos el botón por la clase 'owner-only' que definimos en ui-map.js */
         const deleteBtn = container.querySelector('.btn-delete.owner-only');
-        
-        /* Si el pubkey del evento coincide con el del usuario logueado, mostramos el botón */
+
         if (deleteBtn && AuthManager.isLoggedIn() && AuthManager.userPubkey === entryPubkey) {
             deleteBtn.style.display = 'flex';
         }

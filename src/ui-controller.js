@@ -227,26 +227,6 @@ export function initUI(nostrInstance) {
         });
     }
 
-    /* Quick PoP Button Logic. */
-    const btnQuickPop = document.getElementById('btn-quick-pop');
-    btnQuickPop?.addEventListener('click', async () => {
-        const originalContent = btnQuickPop.innerHTML;
-        btnQuickPop.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; 
-        btnQuickPop.style.opacity = "0.7";
-
-        try {
-            const pos = await window.map.getCurrentLocation();
-            window.dispatchEvent(new CustomEvent('trigger-pop', { 
-                detail: { lat: pos.lat, lng: pos.lon } 
-            }));
-        } catch (err) {
-            showToast("📍 Location Error", "error");
-        } finally {
-            btnQuickPop.innerHTML = originalContent;
-            btnQuickPop.style.opacity = "1";
-        }
-    });
-
     /* Journal Button Click Logic. */
     document.getElementById('btn-open-journal')?.addEventListener('click', async () => {
         if (!AuthManager.isLoggedIn()) {

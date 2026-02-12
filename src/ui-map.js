@@ -35,10 +35,11 @@ export class MapManager {
     /* Obtains user GPS coordinates. */
     async getCurrentLocation() {
         return new Promise((resolve, reject) => {
-            if (!("geolocation" in navigator)) reject("GPS not available");
+            if (!navigator.geolocation) reject(new Error("No geo support"));
             navigator.geolocation.getCurrentPosition(
-                pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-                err => reject(err)
+                (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }),
+                (e) => reject(e),
+                { enableHighAccuracy: true }
             );
         });
     }
@@ -50,21 +51,23 @@ export class MapManager {
 
     /* Adds a marker to the map and stores it in the internal registry. */
     addMarker(id, lat, lon, popupHTML, category = 'all', type = 'public') {
-        if (this.markers.has(id)) return; 
+        if (this.markers.has(id)) return this.markers.get(id); 
 
         const icon = this._createIcon(type);
         const marker = L.marker([lat, lon], { icon }).bindPopup(popupHTML);
         marker.category = category;
         marker.markerType = type; 
 
-        if (type === 'draft') {
+            if (type === 'draft') {
             marker.addTo(this.draftLayer);
-        } else {
-            marker.addTo(this.publicLayer);
-        }
+            } else if (type === 'temp') {
+                marker.addTo(this.map);
+            } else {
+                marker.addTo(this.publicLayer);
+            }
 
-        this.markers.set(id, marker);
-        return marker;
+            this.markers.set(id, marker);
+            return marker;
     }
 
     /* Generates popup HTML based on event data and user profile. */
@@ -157,6 +160,13 @@ export class MapManager {
     clearSearchSelection() {
         if (this.tempSearchGeometry) this.map.removeLayer(this.tempSearchGeometry);
         if (this.tempSearchMarker) this.map.removeLayer(this.tempSearchMarker);
+        
+        const tempPoP = this.markers.get('temp-pop');
+        if (tempPoP) {
+            this.map.removeLayer(tempPoP);
+            this.markers.delete('temp-pop');
+        }
+        
         this.map.closePopup();
     }
 

@@ -641,7 +641,7 @@ input:checked + .test-slider:before { transform: translateX(16px); }
 }
 
 .action-fab i { font-size: 20px; margin-bottom: 2px; }
-.action-fab span { font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.action-fab span { font-size: 10px; font-weight: 800; }
 
 /* Botón PoP con tu degradado violeta */
 #btn-quick-pop {
