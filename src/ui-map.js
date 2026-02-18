@@ -78,27 +78,54 @@ export class MapManager {
         const parts = event.content.split('\n\n');
         const title = isDraft ? (event.tags.find(t => t[0] === 'title')?.[1] || "Draft") : (parts[0] || "Point of Interest");
         const description = isDraft ? "" : (parts.slice(1).join('\n\n') || ""); 
-        
-        const imageTag = event.tags.find(t => t[0] === 'image' || t[0] === 'imeta');
-        const contentImageMatch = event.content.match(/https?:\/\/[^\s]+(?:\.jpg|\.jpeg|\.png|\.webp|\.gif|\.bmp)(?:\?[^\s]*)?/i);
-        const imageUrl = imageTag ? imageTag[1] : (contentImageMatch ? contentImageMatch[0] : null);
 
-        if (!imageUrl && event.content.includes("http")) {
-            console.log("Se detectó un link pero no se reconoció como imagen:", event.content);
+        /* 1. Extract and deduplicate images from Tags and Content */
+        const imageTags = event.tags.filter(t => t[0] === 'image' || t[0] === 'imeta').map(t => t[1]);
+        const contentImages = event.content.match(/https?:\/\/[^\s]+(?:\.jpg|\.jpeg|\.png|\.webp|\.gif|\.bmp)(?:\?[^\s]*)?/gi) || [];
+        const allImageUrls = [...new Set([...imageTags, ...contentImages])];
+
+        /* 2. Generate Carousel HTML with Controls */
+        let imageHTML = '';
+        if (allImageUrls.length > 0) {
+            const carouselId = `carousel-${event.id.substring(0, 8)}`;
+            const showControls = allImageUrls.length > 1;
+
+            imageHTML = `
+            <div class="carousel-wrapper" style="position: relative; margin: 10px 0;">
+                <div id="${carouselId}" class="popup-carousel" style="
+                    display: flex; 
+                    overflow-x: auto; 
+                    scroll-snap-type: x mandatory; 
+                    gap: 10px; 
+                    scroll-behavior: smooth;
+                    scrollbar-width: none;
+                    -ms-overflow-style: none;
+                ">
+                    ${allImageUrls.map((url, index) => `
+                        <div style="flex: 0 0 100%; scroll-snap-align: center; aspect-ratio: 16/9; overflow: hidden; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1);">
+                            <img src="${url}" style="width: 100%; height: 100%; object-fit: cover; display: block;" 
+                                 onclick="window.open('${url}', '_blank')">
+                        </div>
+                    `).join('')}
+                </div>
+
+                ${showControls ? `
+                    <button onclick="document.getElementById('${carouselId}').scrollBy({left: -200, behavior: 'smooth'})" 
+                        style="position: absolute; left: 5px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; width: 25px; height: 25px; cursor: pointer; z-index: 10;">❮</button>
+                    <button onclick="document.getElementById('${carouselId}').scrollBy({left: 200, behavior: 'smooth'})" 
+                        style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; width: 25px; height: 25px; cursor: pointer; z-index: 10;">❯</button>
+                    
+                    <div style="display: flex; justify-content: center; gap: 5px; margin-top: 8px;">
+                        ${allImageUrls.map((_, i) => `
+                            <div style="width: 6px; height: 6px; border-radius: 50%; background: rgba(0,0,0,0.2);"></div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            </div>`;
         }
-        
-        const imageHTML = imageUrl ? `
-            <div class="popup-image-container" style="margin: 10px 0; overflow: hidden; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);">
-                <img src="${imageUrl}" 
-                     style="width: 100%; max-height: 150px; object-fit: cover; display: block; cursor: zoom-in;" 
-                     onerror="this.style.display='none'"
-                     onclick="window.open('${imageUrl}', '_blank')">
-            </div>
-        ` : '';
 
         const catInfo = CATEGORIAS.find(c => c.id === categoryId) || CATEGORIAS.find(c => c.id === 'nostr');
 
-        /* Actions updated to match the new global functions in main.js. */
         const actionsHTML = isDraft ? `
             <button onclick="window.completeAnchor('${event.id}')" class="btn-popup btn-follow">🚀 Publish</button>
             <button onclick="window.deleteEntry('${event.id}')" class="btn-popup btn-delete">🗑️ Delete</button>
