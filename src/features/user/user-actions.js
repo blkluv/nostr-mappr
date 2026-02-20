@@ -5,60 +5,73 @@ export const UserActions = {
     /* Handles the Follow logic for Nostr users. */
     async followUser(pubkey, name) {
         if (!AuthManager.isLoggedIn()) {
-            showToast("🔑 Log in to follow other users.", "error");
+            showToast("🔑 Inicia sesión para seguir usuarios.", "error");
+            return;
+        }
+
+        if (!AuthManager.canSign()) {
+            showToast("⚠️ Modo solo lectura. Conecta una extensión para seguir.", "info");
             return;
         }
 
         if (pubkey === AuthManager.userPubkey) {
-            showToast("You cannot follow yourself.", "error");
+            showToast("No puedes seguirte a ti mismo.", "error");
             return;
         }
 
         const displayName = AuthManager.getDisplayName(pubkey) || name;
-        showToast(`✅ Following ${name} (Coming Soon)`, "success");
+        showToast(`✅ Siguiendo a ${name} (Próximamente)`, "success");
     },
 
     /* Handles the Zap (Lightning payment) initialization. */
     zapUser(pubkey, name, title) {
         if (!AuthManager.isLoggedIn()) {
-            showToast("Connect your account to send Zaps", "error");
+            showToast("Conecta tu cuenta para enviar Zaps", "error");
+            return;
+        }
+
+        // Zaps don't strictly require NIP-07 if we just open a lightning: link or use a separate provider,
+        // but for now, we'll keep it consistent if it's tied to the logged-in user's lightning wallet.
+        // Assuming current implementation needs a signature for NIP-57 Zap Request.
+        if (!AuthManager.canSign()) {
+            showToast("⚠️ Modo solo lectura. Conecta una extensión para enviar Zaps.", "info");
             return;
         }
 
         const displayName = AuthManager.getDisplayName(pubkey) || name;
-        console.log(`Zap initiated for ${displayName} for: ${title}`);
-        showToast(`Sending sats to ${displayName} for recommending "${title}"`, "success");
+        console.log(`Zap iniciado para ${displayName} por: ${title}`);
+        showToast(`Enviando sats a ${displayName} por recomendar "${title}"`, "success");
     },
 
     /* Logic for deleting an existing anchor (Kind 5 request). */
     async deleteAnchor(eventId, mapManager, nostrService, processedEvents) {
+        if (!AuthManager.canSign()) {
+            showToast("⚠️ Modo solo lectura. No puedes borrar anclas.", "info");
+            return;
+        }
+
         const performDelete = async () => {
             try {
-                /* Kind 5: Deletion request in Nostr network. */
                 const success = await nostrService.deleteEvent(eventId);
-
                 if (success) {
-                    /* Visual removal from the map manager. */
                     const marker = mapManager.markers.get(eventId);
                     if (marker) {
                         mapManager.map.removeLayer(marker);
                         mapManager.markers.delete(eventId);
                     }
-
                     if (processedEvents) processedEvents.delete(eventId);
-                    showToast("Deletion request sent", "success");
+                    showToast("Solicitud de eliminación enviada", "success");
                 } else {
-                    showToast("Relay could not process the deletion", "error");
+                    showToast("El relay no pudo procesar la eliminación", "error");
                 }
             } catch (err) {
                 console.error("Error in deletion process:", err);
-                showToast("Unexpected error while deleting", "error");
+                showToast("Error inesperado al borrar", "error");
             }
         };
 
-        /* Open custom glass modal for confirmation. */
         openModal(getConfirmModalHTML(
-            "Do you want to permanently delete this anchor? This will send a Kind 5 event to the network.",
+            "¿Quieres eliminar permanentemente esta ancla? Esto enviará un evento Kind 5 a la red.",
             performDelete
         ));
     }

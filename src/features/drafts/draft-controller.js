@@ -111,6 +111,34 @@ export const DraftController = {
         };
     },
 
+    /* Helper to save drafts locally in localStorage */
+    saveLocalDraft(title, desc, cat, lat, lng, imageUrls) {
+        try {
+            const drafts = JSON.parse(localStorage.getItem('local_drafts') || '[]');
+            const newDraft = {
+                id: `local_${Date.now()}`,
+                kind: 'local',
+                content: `${title}\n\n${desc}`,
+                tags: [
+                    ["t", "spatial_anchor"],
+                    ["t", cat],
+                    ["g", `${lat},${lng}`],
+                    ["title", title]
+                ],
+                pubkey: AuthManager.userPubkey,
+                created_at: Math.floor(Date.now() / 1000)
+            };
+            imageUrls.forEach(url => newDraft.tags.push(["image", url]));
+
+            drafts.push(newDraft);
+            localStorage.setItem('local_draft_storage', JSON.stringify(drafts)); // Changed key to avoid conflict if any
+            return true;
+        } catch (err) {
+            console.error("Local draft error:", err);
+            return false;
+        }
+    },
+
     /* Logic to send the final Kind 1 event to Nostr */
     initPublishLogic(eventId, lat, lng, nostrService, journalManager) {
         const btn = document.getElementById('btn-do-publish');
@@ -123,7 +151,8 @@ export const DraftController = {
 
             if (!title) return showToast("El título es obligatorio", "error");
 
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> PUBLICANDO...';
+            const isReadOnly = !AuthManager.canSign();
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> ${isReadOnly ? 'GUARDANDO LOCALMENTE...' : 'PUBLICANDO...'}`;
             btn.disabled = true;
 
             try {
@@ -131,6 +160,17 @@ export const DraftController = {
                 for (const file of DraftController.selectedFiles) {
                     const url = await ImageService.upload(file);
                     imageUrls.push(url);
+                }
+
+                if (isReadOnly) {
+                    const saved = DraftController.saveLocalDraft(title, desc, cat, lat, lng, imageUrls);
+                    if (saved) {
+                        showToast("¡Borrador local guardado!", "success");
+                        DraftController.selectedFiles = [];
+                        closeModal();
+                        if (journalManager) journalManager.syncJournal();
+                    }
+                    return;
                 }
 
                 const publicEvent = {
@@ -155,14 +195,15 @@ export const DraftController = {
                         await journalManager.deleteEntry(eventId);
                     }
                     closeModal();
+                    if (journalManager) journalManager.syncJournal();
                 } else {
                     throw new Error("Relays failed");
                 }
             } catch (err) {
                 console.error("Publish failed:", err);
                 btn.disabled = false;
-                btn.innerHTML = 'PUBLICAR EN NOSTR';
-                showToast("Error al publicar", "error");
+                btn.innerHTML = isReadOnly ? 'GUARDAR COMO LOCAL' : 'PUBLICAR EN NOSTR';
+                showToast("Error al procesar", "error");
             }
         };
     },
@@ -178,7 +219,8 @@ export const DraftController = {
 
             if (!title) return showToast("⚠️ Título obligatorio", "error");
 
-            btnSave.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> GUARDANDO...';
+            const isReadOnly = !AuthManager.canSign();
+            btnSave.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> ${isReadOnly ? 'GUARDANDO LOCAL...' : 'GUARDANDO...'}`;
             btnSave.disabled = true;
 
             try {
@@ -186,6 +228,17 @@ export const DraftController = {
                 for (const file of DraftController.selectedFiles) {
                     const url = await ImageService.upload(file);
                     imageUrls.push(url);
+                }
+
+                if (isReadOnly) {
+                    const saved = DraftController.saveLocalDraft(title, "", cat, lat, lng, imageUrls);
+                    if (saved) {
+                        showToast("Borrador local guardado", "success");
+                        DraftController.selectedFiles = [];
+                        closeModal();
+                        if (journalManager) journalManager.syncJournal();
+                    }
+                    return;
                 }
 
                 const draftEvent = {

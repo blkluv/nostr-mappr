@@ -77,7 +77,7 @@ document.getElementById('btn-quick-pop').onclick = async (e) => {
     e.stopPropagation();
 
     if (!AuthManager.isLoggedIn()) {
-        import('./ui/ui-controller.js').then(ui => ui.showToast("Log in to add new points", "error"));
+        import('./ui/ui-controller.js').then(ui => ui.showToast("Inicia sesión para agregar puntos", "error"));
         return;
     }
 
@@ -95,14 +95,27 @@ document.getElementById('btn-quick-pop').onclick = async (e) => {
         app.map.map.setView([lat, lng], 18);
         const tempMarker = app.map.addMarker('temp-pop', lat, lng, '', 'none', 'temp');
 
+        const isReadOnly = !AuthManager.canSign();
+
         tempMarker.bindPopup(`
-            <div class="pop-decision-container">
-                <strong>📍 Location Confirmed</strong>
-                <p>How do you want to register this spot?</p>
-                <div class="pop-btn-grid">
-                    <button onclick="window.openReviewModal(${lat}, ${lng})" class="btn-pop-resena">📝 Review</button>
-                    <button onclick="window.openDraftModal(${lat}, ${lng})" class="btn-pop-draft">💾 Draft</button>
+            <div class="pop-decision-container p-2 flex flex-col gap-3 min-w-[180px]">
+                <div class="text-center">
+                    <strong class="text-slate-900 font-black block">📍 Ubicación Confirmada</strong>
+                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">¿Cómo quieres registrarla?</p>
                 </div>
+                <div class="grid grid-cols-1 gap-2">
+                    <button onclick="window.openReviewModal(${lat}, ${lng})" 
+                            class="py-2.5 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-100 ring-2 ring-white">
+                        ${isReadOnly ? '📝 BORRADOR LOCAL' : '📝 RESEÑA DIRECTA'}
+                    </button>
+                    ${!isReadOnly ? `
+                        <button onclick="window.openDraftModal(${lat}, ${lng})" 
+                                class="py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-black text-[10px] uppercase tracking-widest">
+                            💾 GUARDAR BORRADOR
+                        </button>
+                    ` : ''}
+                </div>
+                ${isReadOnly ? '<p class="text-[9px] text-amber-600 font-bold text-center">👁️ Estás en modo solo lectura</p>' : ''}
             </div>
         `, { closeButton: true, offset: [0, -10], closeOnClick: true }).openPopup();
 

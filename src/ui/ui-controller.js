@@ -16,6 +16,8 @@ const modalContent = document.getElementById('modal-content');
 function getProfileModalHTML(profile = null) {
     if (profile) {
         const npubShort = AuthManager.userPubkey.substring(0, 10) + '...';
+        const isReadOnly = AuthManager.loginMethod === 'read-only';
+
         return `
             <div class="p-8 flex flex-col items-center text-center gap-6 animate-in fade-in zoom-in duration-300">
                 <button class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl transition-colors" onclick="closeModal()">✕</button>
@@ -23,10 +25,17 @@ function getProfileModalHTML(profile = null) {
                     <div class="relative">
                         <img src="${profile.picture || 'https://www.gravatar.com/avatar/0?d=mp'}" alt="Avatar" 
                              class="w-24 h-24 rounded-full border-4 border-indigo-500 shadow-xl object-cover">
-                        <div class="absolute bottom-0 right-0 w-6 h-6 bg-green-500 border-2 border-white rounded-full"></div>
+                        <div class="absolute bottom-0 right-0 w-6 h-6 ${isReadOnly ? 'bg-amber-400' : 'bg-green-500'} border-2 border-white rounded-full"></div>
                     </div>
                     <h2 class="mt-4 text-2xl font-black text-slate-900 leading-tight">¡Hola, ${profile.display_name || profile.name || 'User'}!</h2>
-                    <span class="mt-1 bg-slate-100 px-3 py-1 rounded-full text-[10px] font-mono text-slate-500 tracking-wider uppercase border border-slate-200">${npubShort}</span>
+                    <div class="flex flex-col items-center gap-2 mt-1">
+                        <span class="bg-slate-100 px-3 py-1 rounded-full text-[10px] font-mono text-slate-500 tracking-wider uppercase border border-slate-200">${npubShort}</span>
+                        ${isReadOnly ? `
+                            <span class="bg-amber-50 text-amber-600 text-[9px] font-black px-2 py-0.5 rounded border border-amber-100 uppercase tracking-widest">
+                                👁️ Modo Solo Lectura
+                            </span>
+                        ` : ''}
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-3 gap-1 w-full bg-slate-50/50 p-4 rounded-3xl border border-slate-100">
@@ -37,9 +46,15 @@ function getProfileModalHTML(profile = null) {
 
                 <div class="w-full text-left">
                     <p class="text-sm text-slate-600 leading-relaxed mb-6 italic line-clamp-3">"${profile.about || 'No description provided on Nostr.'}"</p>
-                    <button class="w-full flex items-center justify-center gap-2 py-3 border border-slate-200 rounded-2xl font-bold text-slate-700 hover:bg-slate-50 transition-colors">
-                        <i class="fas fa-user-gear text-indigo-500"></i> Ajustes de Perfil
-                    </button>
+                    ${isReadOnly ? `
+                        <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 text-xs text-indigo-700 font-medium">
+                            Conecta una extensión de Nostr para poder publicar anclas y borrar entradas.
+                        </div>
+                    ` : `
+                        <button class="w-full flex items-center justify-center gap-2 py-3 border border-slate-200 rounded-2xl font-bold text-slate-700 hover:bg-slate-50 transition-colors">
+                            <i class="fas fa-user-gear text-indigo-500"></i> Ajustes de Perfil
+                        </button>
+                    `}
                 </div>
 
                 <button id="btn-modal-logout" class="w-full py-4 bg-slate-100 text-rose-500 rounded-2xl font-black hover:bg-rose-50 hover:text-rose-600 transition-all uppercase tracking-widest text-xs">
@@ -55,12 +70,28 @@ function getProfileModalHTML(profile = null) {
                     <i class="fas fa-user-secret text-4xl text-indigo-600"></i>
                 </div>
                 <div>
-                    <h2 class="text-2xl font-black text-slate-900">Modo Invitado</h2>
-                    <p class="mt-2 text-slate-500 text-sm leading-relaxed max-w-[240px]">Conecta tu identidad de Nostr para empezar a anclar lugares en el mapa.</p>
+                    <h2 class="text-2xl font-black text-slate-900 leading-tight">Conectar Identidad</h2>
+                    <p class="mt-2 text-slate-500 text-sm leading-relaxed max-w-[240px]">Para anclar lugares o guardar favoritos, conecta tu cuenta de Nostr.</p>
                 </div>
-                <button id="btn-modal-login" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-black hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-xl">
-                    <i class="fas fa-key text-indigo-400"></i> CONECTAR CON ALBY / NOS2X
-                </button>
+                
+                <div class="w-full flex flex-col gap-4">
+                    <button id="btn-modal-login" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-black hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-xl group">
+                        <i class="fas fa-key text-indigo-400 group-hover:rotate-12 transition-transform"></i> USAR EXTENSIÓN (ALBY/NOS2X)
+                    </button>
+                    
+                    <button id="btn-show-manual" class="text-[11px] font-black text-slate-400 hover:text-indigo-500 transition-colors uppercase tracking-widest">
+                        O CONECTAR MANUALMENTE (npub/email)
+                    </button>
+
+                    <div id="manual-login-section" class="hidden flex flex-col gap-2 animate-in slide-in-from-top-2 duration-300">
+                        <div class="h-[1px] bg-slate-100 w-full my-1"></div>
+                        <input type="text" id="manual-pubkey-input" placeholder="npub, hex o usuario@dominio.com" 
+                               class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm text-slate-700 placeholder:text-slate-400">
+                        <button id="btn-manual-login" class="w-full py-3 bg-indigo-600 text-white rounded-2xl font-black hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all text-[11px] uppercase tracking-widest">
+                            CONECTAR MODO LECTURA
+                        </button>
+                    </div>
+                </div>
             </div>
         `;
     }
@@ -144,7 +175,8 @@ export function closeModal() {
 
 const ANCHOR_STATES = {
     1: { label: 'ANCHORED', color: 'bg-indigo-500', text: 'text-indigo-500' },
-    30024: { label: 'DRAFT', color: 'bg-orange-500', text: 'text-orange-500' }
+    30024: { label: 'DRAFT', color: 'bg-orange-500', text: 'text-orange-500' },
+    'local': { label: 'LOCAL', color: 'bg-slate-900', text: 'text-slate-900' }
 };
 
 /**
@@ -178,7 +210,7 @@ export function getJournalModalHTML(entries = []) {
                     <div class="flex items-center justify-end gap-2">
                         <button class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-100 transition-all border border-indigo-100" 
                                 onclick="window.centerMapAndOpenPopup('${ev.id}', ${lat}, ${lng})" title="View on Map">📍</button>
-                        ${ev.kind === 30024 ? `<button class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center hover:bg-purple-100 transition-all border border-purple-100" onclick="window.completeAnchor('${ev.id}')" title="Publish">🚀</button>` : ''}
+                        ${(ev.kind === 30024 || ev.kind === 'local') ? `<button class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center hover:bg-purple-100 transition-all border border-purple-100" onclick="window.completeAnchor('${ev.id}')" title="Publish">🚀</button>` : ''}
                         <button class="w-8 h-8 rounded-lg bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-rose-50 hover:text-rose-600 transition-all border border-slate-100" onclick="window.deleteEntry('${ev.id}')" title="Delete">🗑️</button>
                     </div>
                 </td>
@@ -225,9 +257,45 @@ export function initUI(nostrInstance) {
 
             openModal(getProfileModalHTML(profile));
 
+            // Extension Login
             document.getElementById('btn-modal-login')?.addEventListener('click', async () => {
-                await AuthManager.login();
-                location.reload();
+                try {
+                    await AuthManager.login();
+                    location.reload();
+                } catch (err) {
+                    showToast(err.message, "error");
+                }
+            });
+
+            // Toggle Manual Login Section
+            document.getElementById('btn-show-manual')?.addEventListener('click', () => {
+                const section = document.getElementById('manual-login-section');
+                const btn = document.getElementById('btn-show-manual');
+                if (section) {
+                    section.classList.toggle('hidden');
+                    btn.classList.add('hidden'); // Hide the toggle button when section is shown
+                }
+            });
+
+            // Manual Login
+            document.getElementById('btn-manual-login')?.addEventListener('click', async () => {
+                const input = document.getElementById('manual-pubkey-input');
+                const val = input ? input.value.trim() : "";
+                if (!val) return showToast("Por favor ingresa una identidad", "info");
+
+                const btn = document.getElementById('btn-manual-login');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> CONECTANDO...';
+                btn.disabled = true;
+
+                try {
+                    await AuthManager.loginManual(val);
+                    location.reload();
+                } catch (err) {
+                    showToast(err.message, "error");
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
             });
 
             document.getElementById('btn-modal-logout')?.addEventListener('click', () => {

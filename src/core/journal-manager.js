@@ -23,15 +23,23 @@ export class JournalManager {
         };
 
         try {
-            const newEvents = await this.nostr.fetchEvents(filters);
+            // 1. Fetch from Nostr
+            const nostrEvents = await this.nostr.fetchEvents(filters);
+
+            // 2. Fetch from Local Storage
+            const localDrafts = JSON.parse(localStorage.getItem('local_draft_storage') || '[]')
+                .filter(d => d.pubkey === AuthManager.userPubkey);
+
+            // 3. Merge and Sort
+            const allEntries = [...nostrEvents, ...localDrafts];
 
             /* Check for actual changes: only process if the count differs. */
-            if (newEvents.length === this.entries.length) {
+            if (allEntries.length === this.entries.length) {
                 this.isSyncing = false;
                 return;
             }
 
-            this.entries = newEvents.sort((a, b) => b.created_at - a.created_at);
+            this.entries = allEntries.sort((a, b) => b.created_at - a.created_at);
             this.map.clearDraftLayers();
             this.entries.forEach(event => this.renderEntry(event));
 
@@ -52,7 +60,7 @@ export class JournalManager {
 
         const profile = AuthManager.profileCache[event.pubkey] || null;
 
-        const isDraft = event.kind === 30024;
+        const isDraft = event.kind === 30024 || event.kind === 'local';
         const popupHTML = this.map.createPopupHTML(event, profile, category, isDraft);
 
         const type = isDraft ? 'draft' : 'public';
@@ -62,7 +70,7 @@ export class JournalManager {
     /* Opens the journal modal with current data and updates content in background. */
     async openJournal() {
         if (!AuthManager.isLoggedIn()) {
-            showToast("🔑 You must connect your Nostr identity.", "error");
+            showToast("🔑 Debes conectar tu identidad de Nostr.", "error");
             return;
         }
 
@@ -86,10 +94,27 @@ export class JournalManager {
         if (closeBtn) closeBtn.onclick = () => closeModal();
     }
 
-    /* Deletes an entry (Kind 5) and removes its visual representation from the map. */
+    /* Deletes an entry (Kind 5 or local) and removes its visual representation from the map. */
     async deleteEntry(eventId) {
+        const isLocal = String(eventId).startsWith('local_');
+
         const performDelete = async () => {
-            const success = await this.nostr.deleteEvent(eventId);
+            let success = false;
+
+            if (isLocal) {
+                try {
+                    const drafts = JSON.parse(localStorage.getItem('local_draft_storage') || '[]');
+                    const filtered = drafts.filter(d => d.id !== eventId);
+                    localStorage.setItem('local_draft_storage', JSON.stringify(filtered));
+                    success = true;
+                } catch (e) { console.error(e); }
+            } else {
+                if (!AuthManager.canSign()) {
+                    showToast("⚠️ Modo solo lectura. No puedes borrar anclas de la red.", "info");
+                    return;
+                }
+                success = await this.nostr.deleteEvent(eventId);
+            }
 
             if (success) {
                 const marker = this.map.markers.get(eventId);
@@ -100,16 +125,16 @@ export class JournalManager {
                 }
 
                 this.entries = this.entries.filter(entry => entry.id !== eventId);
-                showToast("🗑️ Deleted successfully", "success");
+                showToast("🗑️ Eliminado con éxito", "success");
 
                 this.openJournal();
             } else {
-                showToast("❌ Could not process deletion", "error");
+                showToast("❌ No se pudo procesar la eliminación", "error");
             }
         };
 
         openModal(getConfirmModalHTML(
-            "Do you want to permanently delete this anchor? This will send a deletion request to the relays.",
+            isLocal ? "¿Quieres borrar este borrador local? Se perderá permanentemente." : "¿Quieres eliminar esta ancla? Esto enviará una solicitud Kind 5 a los relays.",
             performDelete
         ));
     }
