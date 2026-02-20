@@ -78,7 +78,7 @@ export class JournalManager {
     }
 
     /**
-     * Uploads local drafts to a relay as Kind 30078 "Borradores de Paso".
+     * Uploads local drafts to a relay as Kind 30078 "Transient Drafts".
      */
     async uploadLocalDraftsToRelay(localDrafts) {
         for (const draft of localDrafts) {
@@ -99,7 +99,7 @@ export class JournalManager {
     /* Opens the journal modal with current data and updates content in background. */
     async openJournal() {
         if (!AuthManager.isLoggedIn()) {
-            showToast("🔑 Debes conectar tu identidad de Nostr.", "error");
+            showToast("🔑 You need to connect your Nostr identity.", "error");
             return;
         }
 
@@ -141,7 +141,7 @@ export class JournalManager {
                 }
             } else {
                 if (!AuthManager.canSign()) {
-                    showToast("⚠️ Modo solo lectura. No puedes borrar anclas de la red.", "info");
+                    showToast("⚠️ Read-only mode. You cannot delete network anchors.", "info");
                     return;
                 }
                 success = await this.nostr.deleteEvent(eventId);
@@ -156,16 +156,16 @@ export class JournalManager {
                 }
 
                 this.entries = this.entries.filter(entry => entry.id !== eventId);
-                showToast("🗑️ Eliminado con éxito", "success");
+                showToast("🗑️ Successfully deleted", "success");
 
                 this.openJournal();
             } else {
-                showToast("❌ No se pudo procesar la eliminación", "error");
+                showToast("❌ Could not process deletion", "error");
             }
         };
 
         openModal(getConfirmModalHTML(
-            isLocal ? "¿Quieres borrar este borrador local? Se perderá permanentemente." : "¿Quieres eliminar esta ancla? Esto enviará una solicitud Kind 5 a los relays.",
+            isLocal ? "Do you want to delete this local draft? It will be permanently lost." : "Do you want to delete this anchor? This will send a Kind 5 request to relays.",
             performDelete
         ));
     }
