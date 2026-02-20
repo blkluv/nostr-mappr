@@ -13,7 +13,7 @@ export const AuthManager = {
      */
     async login() {
         if (!window.nostr) {
-            throw new Error("No se detectó una extensión de Nostr. Intenta el login manual.");
+            throw new Error("No Nostr extension detected. Try manual login.");
         }
 
         try {
@@ -41,18 +41,18 @@ export const AuthManager = {
             // 1. Check if NIP-05 (user@domain.com)
             if (pubkey.includes('@')) {
                 const profile = await nip05.queryProfile(pubkey);
-                if (!profile || !profile.pubkey) throw new Error("No se pudo resolver la dirección NIP-05");
+                if (!profile || !profile.pubkey) throw new Error("Could not resolve NIP-05 address");
                 pubkey = profile.pubkey;
             }
             // 2. Check if npub
             else if (pubkey.startsWith('npub1')) {
                 const { type, data } = nip19.decode(pubkey);
-                if (type !== 'npub') throw new Error("Npub inválido");
+                if (type !== 'npub') throw new Error("Invalid npub");
                 pubkey = data;
             }
             // 3. Check if 64-char hex
             else if (!/^[0-9a-fA-F]{64}$/.test(pubkey)) {
-                throw new Error("Formato de llave pública no reconocido");
+                throw new Error("Public key format not recognized");
             }
 
             this.userPubkey = pubkey;
