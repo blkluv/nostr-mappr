@@ -1,6 +1,6 @@
 import L from 'leaflet';
 import { AuthManager } from '../../core/auth.js';
-import { CATEGORIAS } from '../../core/categories.js';
+import { CATEGORIES } from '../../core/categories.js';
 
 export class MapManager {
     constructor(containerId, defaultCoords) {
@@ -121,7 +121,7 @@ export class MapManager {
             </div>`;
         }
 
-        const catInfo = CATEGORIAS.find(c => c.id === categoryId) || CATEGORIAS.find(c => c.id === 'nostr');
+        const catInfo = CATEGORIES.find(c => c.id === categoryId) || CATEGORIES.find(c => c.id === 'nostr');
 
         const btnClass = "flex-1 py-2 px-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 text-center shadow-sm";
         const followBtn = `${btnClass} bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200`;
@@ -129,17 +129,17 @@ export class MapManager {
         const deleteBtn = `${btnClass} bg-rose-500 text-white hover:bg-rose-600 shadow-rose-200`;
 
         const actionsHTML = isDraft ? `
-            <button onclick="window.completeAnchor('${event.id}')" class="${followBtn}">🚀 Publicar</button>
-            <button onclick="window.deleteEntry('${event.id}')" class="${deleteBtn}">🗑️ Borrar</button>
+            <button onclick="window.completeAnchor('${event.id}')" class="${followBtn}">🚀 Publish</button>
+            <button onclick="window.deleteEntry('${event.id}')" class="${deleteBtn}">🗑️ Delete</button>
         ` : `
             <button onclick="window.followUser('${event.pubkey}', '${name}')" class="${followBtn}">Follow</button>
             <button onclick="window.zapUser('${event.pubkey}', '${name}', '${title}')" class="${zapBtn}">⚡ Zap</button>
-            ${event.pubkey === AuthManager.userPubkey ? `<button onclick="window.deleteAnchor('${event.id}')" class="${deleteBtn}">🗑️ Borrar</button>` : ''}
+            ${event.pubkey === AuthManager.userPubkey ? `<button onclick="window.deleteAnchor('${event.id}')" class="${deleteBtn}">🗑️ Delete</button>` : ''}
         `;
 
         const descriptionTruncationLimit = 120;
         const truncatedDescription = cleanDescription.length > descriptionTruncationLimit
-            ? `${cleanDescription.substring(0, descriptionTruncationLimit)}... <button onclick="window.showFullDescription('${event.id}')" class="text-indigo-600 font-bold hover:underline">Ver más</button>`
+            ? `${cleanDescription.substring(0, descriptionTruncationLimit)}... <button onclick="window.showFullDescription('${event.id}')" class="text-indigo-600 font-bold hover:underline">Read more</button>`
             : cleanDescription;
 
         return `
@@ -159,7 +159,7 @@ export class MapManager {
                     ${imageHTML}
                     <div class="text-[12px] text-slate-600 leading-relaxed font-medium mt-1">
                         ${cleanDescription.length > 120
-                ? `${cleanDescription.substring(0, 120)}... <button onclick="window.showFullDescription('${event.id}')" class="text-indigo-600 font-bold hover:underline">Ver más</button>`
+                ? `${cleanDescription.substring(0, 120)}... <button onclick="window.showFullDescription('${event.id}')" class="text-indigo-600 font-bold hover:underline">Read more</button>`
                 : cleanDescription
             }
                     </div>
@@ -201,7 +201,7 @@ export class MapManager {
 
             this.tempSearchMarker.bindPopup(`
                 <div class="p-2 text-center">
-                    <strong class="text-slate-900 text-sm">📍 Ubicación encontrada</strong>
+                    <strong class="text-slate-900 text-sm">📍 Location found</strong>
                     <p class="text-[11px] text-slate-500 mt-1">${result.display_name}</p>
                 </div>
             `).openPopup();
