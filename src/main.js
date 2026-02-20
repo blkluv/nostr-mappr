@@ -75,7 +75,7 @@ window.showFullDescription = (eventId) => {
         const profile = AuthManager.profileCache[AuthManager.userPubkey];
         if (!profile) return;
         import('./ui/ui-controller.js').then(ui => {
-            ui.openModal(ui.getDescriptionModalHTML("Sobre mí", profile.about));
+            ui.openModal(ui.getDescriptionModalHTML("About me", profile.about));
         });
         return;
     }
@@ -85,10 +85,10 @@ window.showFullDescription = (eventId) => {
 
     // Fetch from store
     const event = Array.from(app.journal.entries).find(e => e.id === eventId) ||
-        { content: "Contenido no disponible en caché", tags: [] };
+        { content: "Content not available in cache", tags: [] };
 
     const parts = event.content.split('\n\n');
-    const fullTitle = (event.tags.find(t => t[0] === 'title')?.[1] || parts[0] || "Punto de Interés");
+    const fullTitle = (event.tags.find(t => t[0] === 'title')?.[1] || parts[0] || "Point of Interest");
     const fullDesc = parts.slice(1).join('\n\n') || parts[0];
 
     import('./ui/ui-controller.js').then(ui => {
@@ -103,7 +103,7 @@ document.getElementById('btn-quick-pop').onclick = async (e) => {
     e.stopPropagation();
 
     if (!AuthManager.isLoggedIn()) {
-        import('./ui/ui-controller.js').then(ui => ui.showToast("Inicia sesión para agregar puntos", "error"));
+        import('./ui/ui-controller.js').then(ui => ui.showToast("Sign in to add points", "error"));
         return;
     }
 
@@ -126,22 +126,22 @@ document.getElementById('btn-quick-pop').onclick = async (e) => {
         tempMarker.bindPopup(`
             <div class="pop-decision-container p-2 flex flex-col gap-3 min-w-[180px]">
                 <div class="text-center">
-                    <strong class="text-slate-900 font-black block">📍 Ubicación Confirmada</strong>
-                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">¿Cómo quieres registrarla?</p>
+                    <strong class="text-slate-900 font-black block">📍 Location Confirmed</strong>
+                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">How do you want to save it?</p>
                 </div>
                 <div class="grid grid-cols-1 gap-2">
                     <button onclick="window.openReviewModal(${lat}, ${lng})" 
                             class="py-2.5 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-100 ring-2 ring-white">
-                        ${isReadOnly ? '📝 BORRADOR LOCAL' : '📝 RESEÑA DIRECTA'}
+                        ${isReadOnly ? '📝 LOCAL DRAFT' : '📝 DIRECT REVIEW'}
                     </button>
                     ${!isReadOnly ? `
                         <button onclick="window.openDraftModal(${lat}, ${lng})" 
                                 class="py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-black text-[10px] uppercase tracking-widest">
-                            💾 GUARDAR BORRADOR
+                            💾 SAVE DRAFT
                         </button>
                     ` : ''}
                 </div>
-                ${isReadOnly ? '<p class="text-[9px] text-amber-600 font-bold text-center">👁️ Estás en modo solo lectura</p>' : ''}
+                ${isReadOnly ? '<p class="text-[9px] text-amber-600 font-bold text-center">👁️ You are in read-only mode</p>' : ''}
             </div>
         `, { closeButton: true, offset: [0, -10], closeOnClick: true }).openPopup();
 
