@@ -1,274 +1,244 @@
-import { openModal, closeModal, getDraftModalHTML, getPublishModalHTML, showToast } from '../../ui/ui-controller.js';
+import L from 'leaflet';
 import { AuthManager } from '../../core/auth.js';
-import { ImageService } from '../../utils/image-service.js';
+import { CATEGORIES } from '../../core/categories.js';
 
-export const DraftController = {
-    /* Array to store files locally before upload */
-    selectedFiles: [],
+export class MapManager {
+    constructor(containerId, defaultCoords) {
+        this.map = L.map(containerId, { zoomControl: false }).setView(defaultCoords, 13);
+        this.markers = new Map();
 
-    /* Opens the modal for a new draft (Orange Pin) */
-    openDraftModal(lat, lng, mapManager, nostrService, journalManager) {
-        if (mapManager && mapManager.map) mapManager.map.closePopup();
-        openModal(getDraftModalHTML(lat, lng));
+        /* Independent layers for public and draft markers. */
+        this.publicLayer = L.layerGroup().addTo(this.map);
+        this.draftLayer = L.layerGroup().addTo(this.map);
 
-        DraftController.initPhotoLogic();
-        DraftController.initDraftLogic(lat, lng, nostrService, journalManager);
-    },
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap contributors, © CARTO'
+        }).addTo(this.map);
 
-    /* Opens the modal for a direct Review (Violet Pin - PoP) */
-    openReviewModal(lat, lng, mapManager, nostrService, journalManager) {
-        if (mapManager && mapManager.map) mapManager.map.closePopup();
-        openModal(getPublishModalHTML(lat, lng));
-
-        DraftController.initPublishPhotoLogic();
-        DraftController.initPublishLogic(null, lat, lng, nostrService, journalManager);
-    },
-
-    /* Opens the modal to publish an existing draft (Rocket 🚀) */
-    openPublishModal(eventId, lat, lng, mapManager, nostrService, journalManager) {
-        if (mapManager && mapManager.map) mapManager.map.closePopup();
-
-        const draftMarker = mapManager.markers.get(eventId);
-        openModal(getPublishModalHTML(lat, lng));
-
-        if (draftMarker) {
-            const titleInput = document.getElementById('pub-title');
-            const catSelect = document.getElementById('pub-category');
-            if (titleInput) titleInput.value = draftMarker.titulo || "";
-            if (catSelect) catSelect.value = draftMarker.categoria || "gastronomia";
-        }
-
-        DraftController.initPublishPhotoLogic();
-        DraftController.initPublishLogic(eventId, lat, lng, nostrService, journalManager);
-    },
-
-    /* Minimalist logic for file selection with dedicated IDs to avoid conflicts */
-    initPhotoLogic() {
-        const zone = document.getElementById('draft-upload-zone');
-        const input = document.getElementById('draft-photo');
-        const previewContainer = document.getElementById('draft-preview-container');
-
-        if (!zone || !input) return;
-
-        DraftController.selectedFiles = [];
-        zone.onclick = () => input.click();
-
-        input.onchange = () => {
-            const files = Array.from(input.files);
-            files.forEach(file => {
-                DraftController.selectedFiles.push(file);
-                const thumb = document.createElement('div');
-                thumb.className = 'relative w-16 h-16 group';
-
-                thumb.innerHTML = `
-                    <img src="${URL.createObjectURL(file)}" class="w-full h-full object-cover rounded-xl border border-slate-100 shadow-sm">
-                    <span class="absolute -top-1.5 -right-1.5 bg-slate-900 text-white rounded-full w-5 h-5 flex items-center justify-center cursor-pointer text-[10px] font-black border-2 border-white shadow-md hover:scale-110 transition-transform">✕</span>
-                `;
-
-                thumb.querySelector('span').onclick = (e) => {
-                    e.stopPropagation();
-                    DraftController.selectedFiles = DraftController.selectedFiles.filter(f => f !== file);
-                    thumb.remove();
-                };
-                if (previewContainer) previewContainer.appendChild(thumb);
-            });
-            input.value = '';
-        };
-    },
-
-    initPublishPhotoLogic() {
-        const zone = document.getElementById('pub-upload-zone');
-        const input = document.getElementById('pub-photo');
-        const previewContainer = document.getElementById('pub-preview-container');
-
-        if (!zone || !input) return;
-
-        DraftController.selectedFiles = [];
-        zone.onclick = () => input.click();
-
-        input.onchange = () => {
-            const files = Array.from(input.files);
-            files.forEach(file => {
-                DraftController.selectedFiles.push(file);
-
-                const thumb = document.createElement('div');
-                thumb.className = 'relative w-full aspect-square group';
-
-                thumb.innerHTML = `
-                    <img src="${URL.createObjectURL(file)}" class="w-full h-full object-cover rounded-xl border border-slate-100 shadow-sm">
-                    <span class="absolute -top-1.5 -right-1.5 bg-slate-900 text-white rounded-full w-5 h-5 flex items-center justify-center cursor-pointer text-[10px] font-black border-2 border-white shadow-md hover:scale-110 transition-transform">✕</span>
-                `;
-
-                thumb.querySelector('span').onclick = (e) => {
-                    e.stopPropagation();
-                    DraftController.selectedFiles = DraftController.selectedFiles.filter(f => f !== file);
-                    thumb.remove();
-                };
-
-                if (previewContainer) previewContainer.appendChild(thumb);
-            });
-            input.value = '';
-        };
-    },
-
-    /* Helper to save drafts locally in localStorage */
-    saveLocalDraft(title, desc, cat, lat, lng, imageUrls) {
-        try {
-            const drafts = JSON.parse(localStorage.getItem('local_drafts') || '[]');
-            const newDraft = {
-                id: `local_${Date.now()}`,
-                kind: 'local',
-                content: `${title}\n\n${desc}`,
-                tags: [
-                    ["t", "spatial_anchor"],
-                    ["t", cat],
-                    ["g", `${lat},${lng}`],
-                    ["title", title]
-                ],
-                pubkey: AuthManager.userPubkey,
-                created_at: Math.floor(Date.now() / 1000)
-            };
-            imageUrls.forEach(url => newDraft.tags.push(["image", url]));
-
-            drafts.push(newDraft);
-            localStorage.setItem('local_draft_storage', JSON.stringify(drafts)); // Changed key to avoid conflict if any
-            return true;
-        } catch (err) {
-            console.error("Local draft error:", err);
-            return false;
-        }
-    },
-
-    /* Logic to send the final Kind 1 event to Nostr */
-    initPublishLogic(eventId, lat, lng, nostrService, journalManager) {
-        const btn = document.getElementById('btn-do-publish');
-        if (!btn) return;
-
-        btn.onclick = async () => {
-            const title = document.getElementById('pub-title').value.trim();
-            const desc = document.getElementById('pub-description').value.trim();
-            const cat = document.getElementById('pub-category').value || 'all';
-
-            if (!title) return showToast("El título es obligatorio", "error");
-
-            const isReadOnly = !AuthManager.canSign();
-            btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> ${isReadOnly ? 'GUARDANDO LOCALMENTE...' : 'PUBLICANDO...'}`;
-            btn.disabled = true;
-
-            try {
-                const imageUrls = [];
-                for (const file of DraftController.selectedFiles) {
-                    const url = await ImageService.upload(file);
-                    imageUrls.push(url);
-                }
-
-                if (isReadOnly) {
-                    const saved = DraftController.saveLocalDraft(title, desc, cat, lat, lng, imageUrls);
-                    if (saved) {
-                        showToast("¡Borrador local guardado!", "success");
-                        DraftController.selectedFiles = [];
-                        closeModal();
-                        if (journalManager) journalManager.syncJournal();
-                    }
-                    return;
-                }
-
-                const publicEvent = {
-                    kind: 1,
-                    content: `${title}\n\n${desc}`,
-                    tags: [
-                        ["t", "spatial_anchor"],
-                        ["t", cat],
-                        ["g", `${lat},${lng}`],
-                        ["title", title]
-                    ],
-                    created_at: Math.floor(Date.now() / 1000)
-                };
-
-                imageUrls.forEach(url => publicEvent.tags.push(["image", url]));
-
-                const success = await nostrService.publishEvent(publicEvent);
-                if (success) {
-                    showToast("¡Ancla publicada con éxito!", "success");
-                    DraftController.selectedFiles = [];
-                    if (eventId && journalManager) {
-                        await journalManager.deleteEntry(eventId);
-                    }
-                    closeModal();
-                    if (journalManager) journalManager.syncJournal();
-                } else {
-                    throw new Error("Relays failed");
-                }
-            } catch (err) {
-                console.error("Publish failed:", err);
-                btn.disabled = false;
-                btn.innerHTML = isReadOnly ? 'GUARDAR COMO LOCAL' : 'PUBLICAR EN NOSTR';
-                showToast("Error al procesar", "error");
-            }
-        };
-    },
-
-    /* Logic to save a Draft (Kind 30024) to the Journal */
-    initDraftLogic(lat, lng, nostrService, journalManager) {
-        const btnSave = document.getElementById('btn-save-draft');
-        if (!btnSave) return;
-
-        btnSave.onclick = async () => {
-            const title = document.getElementById('draft-title').value.trim();
-            const cat = document.getElementById('draft-category').value || 'all';
-
-            if (!title) return showToast("⚠️ Título obligatorio", "error");
-
-            const isReadOnly = !AuthManager.canSign();
-            btnSave.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> ${isReadOnly ? 'GUARDANDO LOCAL...' : 'GUARDANDO...'}`;
-            btnSave.disabled = true;
-
-            try {
-                const imageUrls = [];
-                for (const file of DraftController.selectedFiles) {
-                    const url = await ImageService.upload(file);
-                    imageUrls.push(url);
-                }
-
-                if (isReadOnly) {
-                    const saved = DraftController.saveLocalDraft(title, "", cat, lat, lng, imageUrls);
-                    if (saved) {
-                        showToast("Borrador local guardado", "success");
-                        DraftController.selectedFiles = [];
-                        closeModal();
-                        if (journalManager) journalManager.syncJournal();
-                    }
-                    return;
-                }
-
-                const draftEvent = {
-                    kind: 30024,
-                    content: `Draft: ${title}`,
-                    tags: [
-                        ["d", `draft_${Date.now()}`],
-                        ["title", title],
-                        ["t", "spatial_anchor"],
-                        ["t", cat],
-                        ["g", `${lat},${lng}`]
-                    ],
-                    created_at: Math.floor(Date.now() / 1000)
-                };
-
-                imageUrls.forEach(url => draftEvent.tags.push(["image", url]));
-
-                const success = await nostrService.publishEvent(draftEvent);
-                if (success) {
-                    showToast("Borrador guardado", "success");
-                    DraftController.selectedFiles = [];
-                    closeModal();
-                    if (journalManager) journalManager.syncJournal();
-                }
-            } catch (err) {
-                console.error("Draft fail:", err);
-                btnSave.disabled = false;
-                btnSave.innerHTML = 'GUARDAR EN DIARIO';
-                showToast("Error al guardar", "error");
-            }
-        };
+        L.control.zoom({ position: 'bottomright' }).addTo(this.map);
     }
-};
+
+    /* Centralized icon generator. */
+    _createIcon(type = 'public') {
+        let colorClass = 'filter-blue-500'; // Fallback
+
+        // CSS Filters mapping for the generic pin image (Approximation for Tailwind integration)
+        let filterStyle = 'filter: drop-shadow(0 0 2px rgba(0,0,0,0.3)) saturate(1.5);';
+        if (type === 'public') filterStyle += ' filter: hue-rotate(200deg);'; // Blue-ish
+        if (type === 'draft') filterStyle += ' filter: hue-rotate(30deg);'; // Orange-ish
+        if (type === 'temp') filterStyle += ' filter: hue-rotate(280deg);'; // Purple-ish 
+
+        return L.divIcon({
+            className: 'custom-pin-container',
+            html: `
+                <div class="relative w-10 h-10 animate-in zoom-in duration-300">
+                    <img src="https://www.iconpacks.net/icons/2/free-location-pin-icon-2965-thumb.png" 
+                         style="${filterStyle}" 
+                         class="w-full h-full object-contain">
+                </div>
+            `,
+            iconSize: [40, 40],
+            iconAnchor: [20, 40],
+            popupAnchor: [0, -40]
+        });
+    }
+
+    /* Obtains user GPS coordinates. */
+    async getCurrentLocation() {
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) reject(new Error("No geo support"));
+            navigator.geolocation.getCurrentPosition(
+                (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }),
+                (e) => reject(e),
+                { enableHighAccuracy: true }
+            );
+        });
+    }
+
+    /* Sets map view to specific coordinates. */
+    setView(lat, lon, zoom = 14) {
+        this.map.setView([lat, lon], zoom);
+    }
+
+    /* Adds a marker to the map and stores it in the internal registry. */
+    addMarker(id, lat, lon, popupHTML, category = 'all', type = 'public') {
+        if (this.markers.has(id)) return this.markers.get(id);
+
+        const icon = this._createIcon(type);
+        const marker = L.marker([lat, lon], { icon }).bindPopup(popupHTML, {
+            maxWidth: 300,
+            className: 'custom-tailwind-popup'
+        });
+        marker.category = category;
+        marker.markerType = type;
+
+        if (type === 'draft') {
+            marker.addTo(this.draftLayer);
+        } else if (type === 'temp') {
+            marker.addTo(this.map);
+        } else {
+            marker.addTo(this.publicLayer);
+        }
+
+        this.markers.set(id, marker);
+        return marker;
+    }
+
+    /* Generates popup HTML based on event data and user profile. */
+    createPopupHTML(event, profile, categoryId = 'general', isDraft = false) {
+        const name = profile?.display_name || profile?.name || event.pubkey.substring(0, 8);
+        const picture = profile?.picture || 'https://www.gravatar.com/avatar/0?d=mp';
+
+        const parts = event.content.split('\n\n');
+        const title = isDraft ? (event.tags.find(t => t[0] === 'title')?.[1] || "Draft") : (parts[0] || "Point of Interest");
+
+        const rawDescription = isDraft ? "" : (parts.slice(1).join('\n\n') || "");
+        const allImageUrls = [...new Set([
+            ...event.tags.filter(t => t[0] === 'image' || t[0] === 'imeta').map(t => t[1]),
+            ...(event.content.match(/https?:\/\/[^\s]+(?:\.jpg|\.jpeg|\.png|\.webp|\.gif|\.bmp)(?:\?[^\s]*)?/gi) || [])
+        ])];
+
+        const cleanDescription = rawDescription.replace(/https?:\/\/[^\s]+(?:\.jpg|\.jpeg|\.png|\.webp|\.gif|\.bmp)(?:\?[^\s]*)?/gi, '').trim();
+
+        let imageHTML = '';
+        if (allImageUrls.length > 0) {
+            const carouselId = `carousel-${event.id.substring(0, 8)}`;
+            imageHTML = `
+            <div class="relative my-3 group">
+                <div id="${carouselId}" class="flex overflow-x-auto snap-x snap-mandatory gap-2 no-scrollbar scroll-smooth rounded-2xl border border-slate-100 shadow-inner">
+                    ${allImageUrls.map(url => `
+                        <div class="flex-none w-full snap-center aspect-video overflow-hidden cursor-zoom-in">
+                            <img src="${url}" class="w-full h-full object-cover" onclick="window.open('${url}', '_blank')">
+                        </div>
+                    `).join('')}
+                </div>
+                ${allImageUrls.length > 1 ? `
+                    <button onclick="document.getElementById('${carouselId}').scrollBy({left: -240, behavior: 'smooth'})" 
+                        class="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 backdrop-blur text-slate-800 rounded-full w-8 h-8 flex items-center justify-center shadow-md hover:bg-white transition-all opacity-0 group-hover:opacity-100">❮</button>
+                    <button onclick="document.getElementById('${carouselId}').scrollBy({left: 240, behavior: 'smooth'})" 
+                        class="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 backdrop-blur text-slate-800 rounded-full w-8 h-8 flex items-center justify-center shadow-md hover:bg-white transition-all opacity-0 group-hover:opacity-100">❯</button>
+                ` : ''}
+            </div>`;
+        }
+
+        const catInfo = CATEGORIES.find(c => c.id === categoryId) || CATEGORIES.find(c => c.id === 'nostr');
+
+        const btnClass = "flex-1 py-2 px-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 text-center shadow-sm";
+        const followBtn = `${btnClass} bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200`;
+        const zapBtn = `${btnClass} bg-amber-400 text-black hover:bg-amber-500 shadow-amber-200`;
+        const deleteBtn = `${btnClass} bg-rose-500 text-white hover:bg-rose-600 shadow-rose-200`;
+
+        const actionsHTML = isDraft ? `
+            <button onclick="window.completeAnchor('${event.id}')" class="${followBtn}">🚀 Publish</button>
+            <button onclick="window.deleteEntry('${event.id}')" class="${deleteBtn}">🗑️ Delete</button>
+        ` : `
+            <button onclick="window.followUser('${event.pubkey}', '${name}')" class="${followBtn}">Follow</button>
+            <button onclick="window.zapUser('${event.pubkey}', '${name}', '${title}')" class="${zapBtn}">⚡ Zap</button>
+            ${event.pubkey === AuthManager.userPubkey ? `<button onclick="window.deleteAnchor('${event.id}')" class="${deleteBtn}">🗑️ Delete</button>` : ''}
+        `;
+
+        const descriptionTruncationLimit = 120;
+        const truncatedDescription = cleanDescription.length > descriptionTruncationLimit
+            ? `${cleanDescription.substring(0, descriptionTruncationLimit)}... <button onclick="window.showFullDescription('${event.id}')" class="text-indigo-600 font-bold hover:underline">Read more</button>`
+            : cleanDescription;
+
+        return `
+            <div class="popup-container min-w-[240px] p-1 font-sans" data-pubkey="${event.pubkey}">
+                <div class="flex items-center gap-3 mb-3 pb-3 border-b border-slate-50">
+                    <img src="${picture}" class="w-10 h-10 rounded-full border-2 border-slate-100 object-cover" alt="${name}">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-black text-slate-900 leading-none">${name}</span>
+                        <span class="text-[10px] font-mono text-slate-400">@${event.pubkey.substring(0, 8)}</span>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <div class="flex flex-col gap-1 mb-2">
+                        <strong class="text-sm font-black text-slate-800">${title}</strong>
+                        ${catInfo ? `<span class="bg-indigo-50 text-indigo-600 text-[8px] font-black uppercase px-2 py-0.5 rounded-full border border-indigo-100 self-start">${catInfo.label}</span>` : ''}
+                    </div>
+                    ${imageHTML}
+                    <div class="text-[12px] text-slate-600 leading-relaxed font-medium mt-1">
+                        ${cleanDescription.length > 120
+                ? `${cleanDescription.substring(0, 120)}... <button onclick="window.showFullDescription('${event.id}')" class="text-indigo-600 font-bold hover:underline">Read more</button>`
+                : cleanDescription
+            }
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 pt-2 border-t border-slate-50">${actionsHTML}</div>
+            </div>
+        `;
+    }
+
+    /* Searches for an address using Nominatim API. */
+    async searchAddress(query) {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&polygon_geojson=1&q=${encodeURIComponent(query)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data && data.length > 0) {
+            const result = data[0];
+            const lat = parseFloat(result.lat);
+            const lon = parseFloat(result.lon);
+
+            if (this.tempSearchMarker) this.map.removeLayer(this.tempSearchMarker);
+            if (this.tempSearchGeometry) this.map.removeLayer(this.tempSearchGeometry);
+
+            if (result.geojson && result.geojson.type !== 'Point') {
+                this.tempSearchGeometry = L.geoJSON(result.geojson, {
+                    style: { color: '#6366f1', weight: 4, opacity: 0.5, fillColor: '#6366f1', fillOpacity: 0.1 },
+                    pointToLayer: () => null
+                }).addTo(this.map);
+            }
+
+            this.tempSearchMarker = L.marker([lat, lon], {
+                icon: L.icon({
+                    iconUrl: 'https://www.iconpacks.net/icons/2/free-location-pin-icon-2965-thumb.png',
+                    iconSize: [45, 45],
+                    iconAnchor: [22.5, 45],
+                    popupAnchor: [0, -45]
+                })
+            }).addTo(this.map);
+
+            this.tempSearchMarker.bindPopup(`
+                <div class="p-2 text-center">
+                    <strong class="text-slate-900 text-sm">📍 Location found</strong>
+                    <p class="text-[11px] text-slate-500 mt-1">${result.display_name}</p>
+                </div>
+            `).openPopup();
+
+            if (result.boundingbox) {
+                const b = result.boundingbox;
+                this.map.fitBounds([[b[0], b[2]], [b[1], b[3]]]);
+            } else {
+                this.setView(lat, lon, 16);
+            }
+            return { lat, lon };
+        } else {
+            throw new Error("Location not found");
+        }
+    }
+
+    /* Clears temporary search results from the map. */
+    clearSearchSelection() {
+        if (this.tempSearchGeometry) this.map.removeLayer(this.tempSearchGeometry);
+        if (this.tempSearchMarker) this.map.removeLayer(this.tempSearchMarker);
+
+        const tempPoP = this.markers.get('temp-pop');
+        if (tempPoP) {
+            this.map.removeLayer(tempPoP);
+            this.markers.delete('temp-pop');
+        }
+
+        this.map.closePopup();
+    }
+
+    /* Clears visual draft layers and removes draft markers from memory. */
+    clearDraftLayers() {
+        this.draftLayer.clearLayers();
+        for (let [id, marker] of this.markers) {
+            if (marker.markerType === 'draft') {
+                this.markers.delete(id);
+            }
+        }
+    }
+}
