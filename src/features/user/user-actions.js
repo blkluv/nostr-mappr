@@ -5,28 +5,28 @@ export const UserActions = {
     /* Handles the Follow logic for Nostr users. */
     async followUser(pubkey, name) {
         if (!AuthManager.isLoggedIn()) {
-            showToast("🔑 Inicia sesión para seguir usuarios.", "error");
+            showToast("🔑 Sign in to follow users.", "error");
             return;
         }
 
         if (!AuthManager.canSign()) {
-            showToast("⚠️ Modo solo lectura. Conecta una extensión para seguir.", "info");
+            showToast("⚠️ Read-only mode. Connect an extension to follow.", "info");
             return;
         }
 
         if (pubkey === AuthManager.userPubkey) {
-            showToast("No puedes seguirte a ti mismo.", "error");
+            showToast("You cannot follow yourself.", "error");
             return;
         }
 
         const displayName = AuthManager.getDisplayName(pubkey) || name;
-        showToast(`✅ Siguiendo a ${name} (Próximamente)`, "success");
+        showToast(`✅ Following ${name} (Coming soon)`, "success");
     },
 
     /* Handles the Zap (Lightning payment) initialization. */
     zapUser(pubkey, name, title) {
         if (!AuthManager.isLoggedIn()) {
-            showToast("Conecta tu cuenta para enviar Zaps", "error");
+            showToast("Connect your account to send Zaps", "error");
             return;
         }
 
@@ -34,19 +34,19 @@ export const UserActions = {
         // but for now, we'll keep it consistent if it's tied to the logged-in user's lightning wallet.
         // Assuming current implementation needs a signature for NIP-57 Zap Request.
         if (!AuthManager.canSign()) {
-            showToast("⚠️ Modo solo lectura. Conecta una extensión para enviar Zaps.", "info");
+            showToast("⚠️ Read-only mode. Connect an extension to send Zaps.", "info");
             return;
         }
 
         const displayName = AuthManager.getDisplayName(pubkey) || name;
-        console.log(`Zap iniciado para ${displayName} por: ${title}`);
-        showToast(`Enviando sats a ${displayName} por recomendar "${title}"`, "success");
+        console.log(`Zap initiated for ${displayName} for: ${title}`);
+        showToast(`Sending sats to ${displayName} for recommending "${title}"`, "success");
     },
 
     /* Logic for deleting an existing anchor (Kind 5 request). */
     async deleteAnchor(eventId, mapManager, nostrService, processedEvents) {
         if (!AuthManager.canSign()) {
-            showToast("⚠️ Modo solo lectura. No puedes borrar anclas.", "info");
+            showToast("⚠️ Read-only mode. You cannot delete anchors.", "info");
             return;
         }
 
@@ -60,18 +60,18 @@ export const UserActions = {
                         mapManager.markers.delete(eventId);
                     }
                     if (processedEvents) processedEvents.delete(eventId);
-                    showToast("Solicitud de eliminación enviada", "success");
+                    showToast("Deletion request sent", "success");
                 } else {
-                    showToast("El relay no pudo procesar la eliminación", "error");
+                    showToast("Relay could not process deletion", "error");
                 }
             } catch (err) {
                 console.error("Error in deletion process:", err);
-                showToast("Error inesperado al borrar", "error");
+                showToast("Unexpected error while deleting", "error");
             }
         };
 
         openModal(getConfirmModalHTML(
-            "¿Quieres eliminar permanentemente esta ancla? Esto enviará un evento Kind 5 a la red.",
+            "Do you want to permanently delete this anchor? This will send a Kind 5 event to the network.",
             performDelete
         ));
     }
