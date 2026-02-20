@@ -1,5 +1,5 @@
 import { AuthManager } from '../core/auth.js';
-import { CATEGORIAS } from '../core/categories.js';
+import { CATEGORIES } from '../core/categories.js';
 
 /* --- FLOATING UI ELEMENTS --- */
 const userNameMini = document.getElementById('user-name-mini');
@@ -30,12 +30,12 @@ function getProfileModalHTML(profile = null) {
                             ${isConnect ? '🔗' : ''}
                         </div>
                     </div>
-                    <h2 class="mt-4 text-2xl font-black text-slate-900 leading-tight">¡Hola, ${profile.display_name || profile.name || 'User'}!</h2>
+                    <h2 class="mt-4 text-2xl font-black text-slate-900 leading-tight">Hello, ${profile.display_name || profile.name || 'User'}!</h2>
                     <div class="flex flex-col items-center gap-2 mt-1">
                         <span class="bg-slate-100 px-3 py-1 rounded-full text-[10px] font-mono text-slate-500 tracking-wider uppercase border border-slate-200">${npubShort}</span>
                         ${isReadOnly ? `
                             <span class="bg-amber-50 text-amber-600 text-[9px] font-black px-2 py-0.5 rounded border border-amber-100 uppercase tracking-widest">
-                                👁️ Modo Solo Lectura
+                                👁️ Read-Only Mode
                             </span>
                         ` : ''}
                         ${isConnect ? `
@@ -55,22 +55,22 @@ function getProfileModalHTML(profile = null) {
                 <div class="w-full text-left">
                     <p id="profile-about" class="text-sm text-slate-600 leading-relaxed mb-6 italic">
                         "${profile.about?.length > 150
-                ? `${profile.about.substring(0, 150)}... <button onclick="window.showFullDescription('profile')" class="text-indigo-600 font-bold not-italic">Ver más</button>`
+                ? `${profile.about.substring(0, 150)}... <button onclick="window.showFullDescription('profile')" class="text-indigo-600 font-bold not-italic">Read more</button>`
                 : (profile.about || 'No description provided on Nostr.')}"
                     </p>
                     ${isReadOnly ? `
                         <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 text-xs text-indigo-700 font-medium">
-                            Conecta una extensión o usa Nostr Connect para poder publicar anclas.
+                            Connect an extension or use Nostr Connect to publish anchors.
                         </div>
                     ` : `
                         <button class="w-full flex items-center justify-center gap-2 py-3 border border-slate-200 rounded-2xl font-bold text-slate-700 hover:bg-slate-50 transition-colors">
-                            <i class="fas fa-user-gear text-indigo-500"></i> Ajustes de Perfil
+                            <i class="fas fa-user-gear text-indigo-500"></i> Profile Settings
                         </button>
                     `}
                 </div>
 
                 <button id="btn-modal-logout" class="w-full py-4 bg-slate-100 text-rose-500 rounded-2xl font-black hover:bg-rose-50 hover:text-rose-600 transition-all uppercase tracking-widest text-xs">
-                    CERRAR SESIÓN
+                    LOG OUT
                 </button>
             </div>
         `;
@@ -82,36 +82,36 @@ function getProfileModalHTML(profile = null) {
                     <i class="fas fa-user-secret text-4xl text-indigo-600"></i>
                 </div>
                 <div>
-                    <h2 class="text-2xl font-black text-slate-900 leading-tight">Conectar Identidad</h2>
-                    <p class="mt-2 text-slate-500 text-sm leading-relaxed max-w-[240px]">Para anclar lugares o guardar favoritos, conecta tu cuenta de Nostr.</p>
+                    <h2 class="text-2xl font-black text-slate-900 leading-tight">Connect Identity</h2>
+                    <p class="mt-2 text-slate-500 text-sm leading-relaxed max-w-[240px]">To anchor places or save favorites, connect your Nostr account.</p>
                 </div>
                 
                 <div class="w-full flex flex-col gap-4">
                     <button id="btn-modal-login" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-black hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-xl group">
-                        <i class="fas fa-key text-indigo-400 group-hover:rotate-12 transition-transform"></i> USAR EXTENSIÓN (ALBY/NOS2X)
+                        <i class="fas fa-key text-indigo-400 group-hover:rotate-12 transition-transform"></i> USE EXTENSION (ALBY/NOS2X)
                     </button>
                     
                     <button id="btn-show-manual" class="text-[11px] font-black text-slate-400 hover:text-indigo-500 transition-colors uppercase tracking-widest">
-                        O CONECTAR MANUALMENTE (npub/email)
+                        OR CONNECT MANUALLY (npub/email)
                     </button>
 
                     <div id="manual-login-section" class="hidden flex flex-col gap-2 animate-in slide-in-from-top-2 duration-300">
                         <div class="h-[1px] bg-slate-100 w-full my-1"></div>
                         
-                        <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">LECTURA (npub/NIP-05)</label>
-                        <input type="text" id="manual-pubkey-input" placeholder="npub... o usuario@dominio" 
+                        <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">READ-ONLY (npub/NIP-05)</label>
+                        <input type="text" id="manual-pubkey-input" placeholder="npub... or user@domain" 
                                class="w-full p-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm">
                         <button id="btn-manual-login" class="w-full py-3 bg-slate-200 text-slate-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-300">
-                            ENTRAR MODO LECTURA
+                            ENTER READ-ONLY MODE
                         </button>
 
                         <div class="h-[1px] bg-slate-100 w-full my-2"></div>
 
-                        <label class="text-[9px] font-black text-indigo-400 uppercase tracking-widest ml-1">FIRMA REMOTA (Bunker URL)</label>
+                        <label class="text-[9px] font-black text-indigo-400 uppercase tracking-widest ml-1">REMOTE SIGNER (Bunker URL)</label>
                         <input type="text" id="bunker-url-input" placeholder="bunker://pubkey?relay=..." 
                                class="w-full p-3 bg-indigo-50/50 border border-indigo-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm">
                         <button id="btn-connect-login" class="w-full py-3 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 shadow-lg shadow-indigo-100">
-                            CONECTAR SIGNER
+                            CONNECT SIGNER
                         </button>
                     </div>
                 </div>
@@ -124,12 +124,12 @@ function getProfileModalHTML(profile = null) {
  * Generates HTML for the temporary Draft modal.
  */
 export function getDraftModalHTML(lat, lng) {
-    const options = CATEGORIAS.map(cat => `<option value="${cat.id}">${cat.label}</option>`).join('');
+    const options = CATEGORIES.map(cat => `<option value="${cat.id}">${cat.label}</option>`).join('');
     return `
         <div class="p-8 flex flex-col gap-6 animate-in fade-in zoom-in duration-300 max-h-[90vh] overflow-y-auto">
             <button class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl transition-colors" id="btn-close-draft">✕</button>
             <div class="text-center">
-                <h2 class="text-2xl font-black text-slate-900">Ancla Provisional</h2>
+                <h2 class="text-2xl font-black text-slate-900">Provisional Anchor</h2>
                 <span class="inline-block mt-2 bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-[10px] font-mono font-bold border border-indigo-100 uppercase tracking-widest">
                     📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}
                 </span>
@@ -137,15 +137,15 @@ export function getDraftModalHTML(lat, lng) {
 
             <div class="space-y-4">
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[10px] font-black text-indigo-600 uppercase tracking-widest ml-1">TÍTULO DEL LUGAR</label>
-                    <input type="text" id="draft-title" placeholder="Ej: Café de la Esquina..." 
+                    <label class="text-[10px] font-black text-indigo-600 uppercase tracking-widest ml-1">PLACE TITLE</label>
+                    <input type="text" id="draft-title" placeholder="Ex: Corner Cafe..." 
                            class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 placeholder:text-slate-400">
                 </div>
 
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[10px] font-black text-indigo-600 uppercase tracking-widest ml-1">CATEGORÍA</label>
+                    <label class="text-[10px] font-black text-indigo-600 uppercase tracking-widest ml-1">CATEGORY</label>
                     <select id="draft-category" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800">
-                        <option value="">Seleccionar categoría...</option>
+                        <option value="">Select category...</option>
                         ${options}
                     </select>
                 </div>
@@ -154,14 +154,14 @@ export function getDraftModalHTML(lat, lng) {
                     <input type="file" id="draft-photo" accept="image/*" multiple class="hidden">
                     <div class="flex flex-col items-center gap-2">
                         <i class="fas fa-camera text-2xl text-indigo-500 group-hover:scale-110 transition-transform"></i>
-                        <p class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">SUBIR O TOMAR FOTO</p>
+                        <p class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">UPLOAD OR TAKE PHOTO</p>
                     </div>
                 </div>
                 <div id="draft-preview-container" class="flex gap-2 flex-wrap empty:hidden"></div>
             </div>
 
             <button id="btn-save-draft" class="w-full py-4 bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest text-xs">
-                GUARDAR EN DIARIO
+                SAVE TO JOURNAL
             </button>
         </div>
     `;
@@ -218,7 +218,7 @@ export function getJournalModalHTML(entries = []) {
         const date = new Date(ev.created_at * 1000).toLocaleDateString();
 
         const catId = ev.tags.find(t => t[0] === 't' && t[1] !== 'spatial_anchor')?.[1];
-        const catInfo = CATEGORIAS.find(c => c.id === catId);
+        const catInfo = CATEGORIES.find(c => c.id === catId);
         const categoryText = catInfo ? catInfo.label : '-';
 
         return `
@@ -246,21 +246,21 @@ export function getJournalModalHTML(entries = []) {
     return `
         <div class="p-8 flex flex-col gap-6 animate-in fade-in slide-in-from-top-4 duration-300 w-full lg:max-w-3xl">
             <button class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl transition-colors" id="btn-close-journal">✕</button>
-            <h2 class="text-2xl font-black text-slate-900 self-center">Diario de Anclas</h2>
+            <h2 class="text-2xl font-black text-slate-900 self-center">Anchor Journal</h2>
             
             <div class="overflow-x-auto bg-white rounded-[24px] border border-slate-100 shadow-inner">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-50/80 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                            <th class="py-3 pl-6">Fecha</th>
-                            <th class="py-3">Lugar</th>
-                            <th class="py-3">Categoría</th>
-                            <th class="py-3 text-center">Estado</th>
-                            <th class="py-3 pr-6 text-right">Acción</th>
+                            <th class="py-3 pl-6">Date</th>
+                            <th class="py-3">Place</th>
+                            <th class="py-3">Category</th>
+                            <th class="py-3 text-center">Status</th>
+                            <th class="py-3 pr-6 text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-50">
-                        ${rows || '<tr><td colspan="5" class="py-20 text-center font-bold text-slate-300 uppercase tracking-widest">No hay entradas aún.</td></tr>'}
+                        ${rows || '<tr><td colspan="5" class="py-20 text-center font-bold text-slate-300 uppercase tracking-widest">No entries yet.</td></tr>'}
                     </tbody>
                 </table>
             </div>
@@ -306,11 +306,11 @@ export function initUI(nostrInstance) {
             document.getElementById('btn-manual-login')?.addEventListener('click', async () => {
                 const input = document.getElementById('manual-pubkey-input');
                 const val = input ? input.value.trim() : "";
-                if (!val) return showToast("Por favor ingresa una identidad", "info");
+                if (!val) return showToast("Please enter an identity", "info");
 
                 const btn = document.getElementById('btn-manual-login');
                 const originalText = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> CONECTANDO...';
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> CONNECTING...';
                 btn.disabled = true;
 
                 try {
@@ -327,10 +327,10 @@ export function initUI(nostrInstance) {
             document.getElementById('btn-connect-login')?.addEventListener('click', async () => {
                 const input = document.getElementById('bunker-url-input');
                 const val = input ? input.value.trim() : "";
-                if (!val) return showToast("Ingresa una URL de Bunker", "info");
+                if (!val) return showToast("Enter a Bunker URL", "info");
 
                 const btn = document.getElementById('btn-connect-login');
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> CONECTANDO...';
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> CONNECTING...';
                 btn.disabled = true;
 
                 try {
@@ -338,12 +338,12 @@ export function initUI(nostrInstance) {
                     const clientSecretHex = bytesToHex(nostrInstance.connect.clientSecretKey);
 
                     await AuthManager.loginConnect(signerPubkey, clientSecretHex);
-                    showToast("¡Vínculo establecido!", "success");
+                    showToast("Connection established!", "success");
 
                     setTimeout(() => location.reload(), 1000);
                 } catch (err) {
-                    showToast("Error al conectar: " + err.message, "error");
-                    btn.innerHTML = 'CONECTAR SIGNER';
+                    showToast("Error connecting: " + err.message, "error");
+                    btn.innerHTML = 'CONNECT SIGNER';
                     btn.disabled = false;
                 }
             });
@@ -357,7 +357,7 @@ export function initUI(nostrInstance) {
 
     document.getElementById('btn-open-journal')?.addEventListener('click', async () => {
         if (!AuthManager.isLoggedIn()) {
-            showToast("Debes conectarte para ver tu diario.", "error");
+            showToast("You must connect to view your journal.", "error");
             return;
         }
         openModal(getJournalModalHTML([]));
@@ -392,12 +392,12 @@ export function initUI(nostrInstance) {
 }
 
 export function getPublishModalHTML(lat, lng) {
-    const categoryOptions = CATEGORIAS.map(cat => `<option value="${cat.id}">${cat.label}</option>`).join('');
+    const categoryOptions = CATEGORIES.map(cat => `<option value="${cat.id}">${cat.label}</option>`).join('');
     return `
         <div class="p-8 flex flex-col gap-6 animate-in fade-in zoom-in duration-300 max-h-[90vh] overflow-y-auto w-full">
             <button id="btn-close-publish" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl transition-colors">×</button>
             <div class="text-center">
-                <h2 class="text-2xl font-black text-slate-900 uppercase">🚀 Publicar Ancla</h2>
+                <h2 class="text-2xl font-black text-slate-900 uppercase">🚀 Publish Anchor</h2>
                 <span class="inline-block mt-2 bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-[10px] font-mono font-bold border border-indigo-100 uppercase tracking-widest">
                     📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}
                 </span>
@@ -405,17 +405,17 @@ export function getPublishModalHTML(lat, lng) {
             
             <div class="space-y-4">
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[10px] font-black text-indigo-600 uppercase tracking-widest ml-1">NOMBRE DEL LUGAR</label>
-                    <input type="text" id="pub-title" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800" placeholder="Ej: Café de la Esquina...">
+                    <label class="text-[10px] font-black text-indigo-600 uppercase tracking-widest ml-1">PLACE NAME</label>
+                    <input type="text" id="pub-title" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800" placeholder="Ex: Corner Cafe...">
                 </div>
 
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[10px] font-black text-indigo-600 uppercase tracking-widest ml-1">DESCRIPCIÓN / RESEÑA</label>
-                    <textarea id="pub-description" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 h-24 resize-none" placeholder="Cuenta por qué este lugar es especial..."></textarea>
+                    <label class="text-[10px] font-black text-indigo-600 uppercase tracking-widest ml-1">DESCRIPTION / REVIEW</label>
+                    <textarea id="pub-description" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 h-24 resize-none" placeholder="Tell why this place is special..."></textarea>
                 </div>
 
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[10px] font-black text-indigo-600 uppercase tracking-widest ml-1">CATEGORÍA</label>
+                    <label class="text-[10px] font-black text-indigo-600 uppercase tracking-widest ml-1">CATEGORY</label>
                     <select id="pub-category" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800">
                         ${categoryOptions} 
                     </select>
@@ -425,14 +425,14 @@ export function getPublishModalHTML(lat, lng) {
                     <input type="file" id="pub-photo" multiple accept="image/*" class="hidden">
                     <div class="flex flex-col items-center gap-2">
                         <i class="fas fa-camera text-2xl text-indigo-500 group-hover:scale-110 transition-transform"></i>
-                        <p class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">SUBIR O TOMAR FOTO</p>
+                        <p class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">UPLOAD OR TAKE PHOTO</p>
                     </div>
                 </div>
                 <div id="pub-preview-container" class="grid grid-cols-4 gap-2 empty:hidden"></div>
             </div>
 
             <button id="btn-do-publish" class="w-full py-5 bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest text-xs">
-                PUBLICAR EN NOSTR
+                PUBLISH TO NOSTR
             </button>
         </div>
     `;
@@ -487,7 +487,7 @@ export function getDescriptionModalHTML(title, description) {
                 ${description.replace(/\n/g, '<br>')}
             </div>
             <button onclick="closeModal()" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all">
-                CERRAR
+                CLOSE
             </button>
         </div>
     `;
@@ -505,16 +505,16 @@ export function getConfirmModalHTML(message, onConfirm) {
                 <i class="fas fa-exclamation-triangle text-3xl text-rose-500"></i>
             </div>
             <div>
-                <h3 class="text-2xl font-black text-slate-900 leading-tight">¿Confirmar Acción?</h3>
+                <h3 class="text-2xl font-black text-slate-900 leading-tight">Confirm Action?</h3>
                 <p class="mt-2 text-sm text-slate-500 leading-relaxed">${message}</p>
             </div>
             
             <div class="grid grid-cols-2 gap-3 w-full">
                 <button onclick="window.closeModal()" class="py-4 bg-slate-100 text-slate-500 rounded-2xl font-black hover:bg-slate-200 transition-all uppercase tracking-widest text-[10px]">
-                    CANCELAR
+                    CANCEL
                 </button>
                 <button onclick="window.executeConfirmAction()" class="py-4 bg-rose-600 text-white rounded-2xl font-black hover:bg-rose-700 shadow-lg shadow-rose-200 transition-all uppercase tracking-widest text-[10px]">
-                    ELIMINAR
+                    DELETE
                 </button>
             </div>
         </div>
