@@ -14,7 +14,7 @@ export function initSearch(mapManager) {
             await mapManager.searchAddress(query);
             console.log(`Search successful: ${query}`);
         } catch (err) {
-            window.showToast("📍 Sorry, we couldn't find that location", "error");
+            window.showToast("📍 Lo sentimos, no pudimos encontrar esa ubicación", "error");
         }
     }
 
@@ -24,15 +24,16 @@ export function initSearch(mapManager) {
         if (e.key === 'Enter') executeSearch();
     };
 
-    /* Controls visibility of the 'X' clear button based on input length. */
+    /* Controls visibility of the 'X' clear button using Tailwind classes. */
     searchInput.addEventListener('input', () => {
-        btnClear.style.display = searchInput.value.length > 0 ? 'block' : 'none';
+        const hasValue = searchInput.value.length > 0;
+        btnClear.classList.toggle('hidden', !hasValue);
     });
 
     /* Clears search results and resets the map selection state. */
     btnClear.addEventListener('click', () => {
         searchInput.value = '';
-        btnClear.style.display = 'none';
+        btnClear.classList.add('hidden');
         if (mapManager && typeof mapManager.clearSearchSelection === 'function') {
             mapManager.clearSearchSelection();
         }

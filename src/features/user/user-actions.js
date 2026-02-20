@@ -1,5 +1,5 @@
-import { AuthManager } from './auth.js';
-import { showToast, openModal, getConfirmModalHTML } from './ui-controller.js';
+import { AuthManager } from '../../core/auth.js';
+import { showToast, openModal, getConfirmModalHTML } from '../../ui/ui-controller.js';
 
 export const UserActions = {
     /* Handles the Follow logic for Nostr users. */
@@ -35,7 +35,7 @@ export const UserActions = {
         const performDelete = async () => {
             try {
                 /* Kind 5: Deletion request in Nostr network. */
-                const success = await nostrService.deleteEvent(eventId); 
+                const success = await nostrService.deleteEvent(eventId);
 
                 if (success) {
                     /* Visual removal from the map manager. */
@@ -44,7 +44,7 @@ export const UserActions = {
                         mapManager.map.removeLayer(marker);
                         mapManager.markers.delete(eventId);
                     }
-                    
+
                     if (processedEvents) processedEvents.delete(eventId);
                     showToast("Deletion request sent", "success");
                 } else {
@@ -58,7 +58,7 @@ export const UserActions = {
 
         /* Open custom glass modal for confirmation. */
         openModal(getConfirmModalHTML(
-            "Do you want to permanently delete this anchor? This will send a Kind 5 event to the network.", 
+            "Do you want to permanently delete this anchor? This will send a Kind 5 event to the network.",
             performDelete
         ));
     }

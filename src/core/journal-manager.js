@@ -1,41 +1,40 @@
 import { AuthManager } from './auth.js';
-import { openModal, closeModal, getJournalModalHTML, getConfirmModalHTML } from './ui-controller.js';
-import { showToast } from './ui-controller.js';
+import { openModal, closeModal, getJournalModalHTML, getConfirmModalHTML, showToast } from '../ui/ui-controller.js';
 
 /* JournalManager: Handles the logic for the user's personal logbook, managing both public anchors and drafts. */
 export class JournalManager {
     constructor(mapManager, nostrService) {
         this.map = mapManager;
         this.nostr = nostrService;
-        this.entries = []; 
+        this.entries = [];
         this.isSyncing = false;
     }
 
     /* Synchronizes logbook entries from the network and renders them on the map. */
-    async syncJournal() { 
-        if (!AuthManager.isLoggedIn() || this.isSyncing) return; 
+    async syncJournal() {
+        if (!AuthManager.isLoggedIn() || this.isSyncing) return;
 
         this.isSyncing = true;
-        
+
         const filters = {
-            kinds: [1, 30024], 
+            kinds: [1, 30024],
             authors: [AuthManager.userPubkey],
             "#t": ["spatial_anchor"]
         };
 
         try {
             const newEvents = await this.nostr.fetchEvents(filters);
-            
+
             /* Check for actual changes: only process if the count differs. */
             if (newEvents.length === this.entries.length) {
                 this.isSyncing = false;
-                return; 
+                return;
             }
 
             this.entries = newEvents.sort((a, b) => b.created_at - a.created_at);
-            this.map.clearDraftLayers(); 
-            this.entries.forEach(event => this.renderEntry(event)); 
-            
+            this.map.clearDraftLayers();
+            this.entries.forEach(event => this.renderEntry(event));
+
         } catch (err) {
             console.error("Journal sync error", err);
         } finally {
@@ -44,7 +43,7 @@ export class JournalManager {
     }
 
     /* Renders a single journal entry on the map using the MapManager logic. */
-    renderEntry(event) { 
+    renderEntry(event) {
         const coordsTag = event.tags.find(t => t[0] === 'g')?.[1];
         if (!coordsTag) return;
 
@@ -69,10 +68,10 @@ export class JournalManager {
 
         /* 1. Initial render with local data. */
         openModal(getJournalModalHTML(this.entries));
-        
+
         /* 2. Background synchronization. */
-        await this.syncJournal(); 
-        
+        await this.syncJournal();
+
         /* 3. Re-render only if modal is still open and data has updated. */
         const modalContent = document.getElementById('modal-content');
         if (modalContent) {
@@ -88,10 +87,10 @@ export class JournalManager {
     }
 
     /* Deletes an entry (Kind 5) and removes its visual representation from the map. */
-    async deleteEntry(eventId) { 
+    async deleteEntry(eventId) {
         const performDelete = async () => {
             const success = await this.nostr.deleteEvent(eventId);
-            
+
             if (success) {
                 const marker = this.map.markers.get(eventId);
                 if (marker) {
@@ -99,18 +98,18 @@ export class JournalManager {
                     this.map.publicLayer.removeLayer(marker);
                     this.map.markers.delete(eventId);
                 }
-                
+
                 this.entries = this.entries.filter(entry => entry.id !== eventId);
                 showToast("🗑️ Deleted successfully", "success");
-                
-                this.openJournal(); 
+
+                this.openJournal();
             } else {
                 showToast("❌ Could not process deletion", "error");
             }
         };
 
         openModal(getConfirmModalHTML(
-            "Do you want to permanently delete this anchor? This will send a deletion request to the relays.", 
+            "Do you want to permanently delete this anchor? This will send a deletion request to the relays.",
             performDelete
         ));
     }
