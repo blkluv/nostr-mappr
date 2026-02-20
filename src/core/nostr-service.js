@@ -1,10 +1,30 @@
-import { SimplePool } from 'nostr-tools';
+import { SimplePool, bytesToHex, hexToBytes } from 'nostr-tools';
 import { AuthManager } from './auth.js';
+import { NostrConnectService } from './nostr-connect-service.js';
 
 export class NostrService {
     constructor(relayUrls) {
         this.relays = relayUrls;
         this.pool = new SimplePool();
+        this.connect = new NostrConnectService(this.pool, this.relays);
+
+        /* Resume connection if using Nostr Connect */
+        if (AuthManager.loginMethod === 'connect' && AuthManager.connectData) {
+            const { signerPubkey, clientSecretKey } = AuthManager.connectData;
+            this.connect.resume(signerPubkey, clientSecretKey);
+        }
+    }
+
+    /**
+     * Signs an event using the appropriate method (NIP-07 extension or NIP-46 connect).
+     */
+    async signEvent(event) {
+        if (AuthManager.loginMethod === 'connect') {
+            return await this.connect.signEvent(event);
+        } else if (window.nostr) {
+            return await window.nostr.signEvent(event);
+        }
+        throw new Error("No signing method available");
     }
 
     /* Subscribes to Kind 1 events with the spatial_anchor tag across configured relays. */
@@ -17,8 +37,8 @@ export class NostrService {
         console.log("🔍 Sending global filter:", mainFilter);
 
         return this.pool.subscribeMany(
-            this.relays, 
-            mainFilter, 
+            this.relays,
+            mainFilter,
             {
                 onevent(event) {
                     if (event && event.id) {
@@ -32,7 +52,7 @@ export class NostrService {
             }
         );
     }
-    
+
     /* Signs and publishes a standard Kind 1 anchor event. */
     async publishAnchor(eventData) {
         const event = {
@@ -44,12 +64,12 @@ export class NostrService {
         };
 
         try {
-            /* Requests signature from the browser extension (NIP-07). */
-            const signedEvent = await window.nostr.signEvent(event);
-            
+            /* Requests signature from extension or remote signer */
+            const signedEvent = await this.signEvent(event);
+
             /* Broadcasts the signed event to all relays. */
             await Promise.any(this.pool.publish(this.relays, signedEvent));
-            
+
             console.log("🚀 Event anchored and published:", signedEvent);
             return signedEvent;
         } catch (err) {
@@ -61,10 +81,10 @@ export class NostrService {
     /* Fetches user profile metadata (Kind 0) with a 3-second timeout. */
     async getUserProfile(pubkey) {
         const filter = { kinds: [0], authors: [pubkey], limit: 1 };
-        
+
         try {
             const event = await this.pool.get(this.relays, filter, { timeout: 3000 });
-            
+
             if (event && event.content) {
                 return JSON.parse(event.content);
             }
@@ -78,16 +98,16 @@ export class NostrService {
     async deleteEvent(eventId) {
         const event = {
             kind: 5,
-            pubkey: AuthManager.userPubkey, 
+            pubkey: AuthManager.userPubkey,
             created_at: Math.floor(Date.now() / 1000),
             tags: [['e', eventId]],
             content: 'Removing old spatial anchor'
         };
 
         try {
-            const signedEvent = await window.nostr.signEvent(event);
+            const signedEvent = await this.signEvent(event);
             /* Broadcasts without requesting additional signatures. */
-            return await this.broadcastEvent(signedEvent); 
+            return await this.broadcastEvent(signedEvent);
         } catch (err) {
             console.error("Error signing deletion:", err);
             return false;
@@ -107,8 +127,8 @@ export class NostrService {
     /* Generic method to sign and broadcast any provided event structure. */
     async publishEvent(event) {
         try {
-            const signedEvent = await window.nostr.signEvent(event);
-            return await this.broadcastEvent(signedEvent); 
+            const signedEvent = await this.signEvent(event);
+            return await this.broadcastEvent(signedEvent);
         } catch (err) {
             return false;
         }
@@ -123,5 +143,44 @@ export class NostrService {
             console.error("Network failure during broadcast:", err);
             return false;
         }
+    }
+
+    /**
+     * NIP-78: App Data (Kind 30078) for "Borradores de Paso"
+     */
+    async publishAppData(dTag, data) {
+        const event = {
+            kind: 30078,
+            pubkey: AuthManager.userPubkey,
+            created_at: Math.floor(Date.now() / 1000),
+            tags: [['d', dTag]],
+            content: typeof data === 'string' ? data : JSON.stringify(data)
+        };
+
+        return await this.publishEvent(event);
+    }
+
+    async fetchAppData(dTag) {
+        const filter = {
+            kinds: [30078],
+            authors: [AuthManager.userPubkey],
+            "#d": [dTag]
+        };
+
+        try {
+            const events = await this.fetchEvents(filter);
+            if (events && events.length > 0) {
+                // Sort by newest first
+                const latest = events.sort((a, b) => b.created_at - a.created_at)[0];
+                try {
+                    return JSON.parse(latest.content);
+                } catch {
+                    return latest.content;
+                }
+            }
+        } catch (e) {
+            console.error("Error fetching app data:", e);
+        }
+        return null;
     }
 }

@@ -4,7 +4,8 @@ export const AuthManager = {
     /* Load stored pubkey and profile cache from localStorage on startup. */
     userPubkey: localStorage.getItem('nostr_user_pubkey') || null,
     profileCache: JSON.parse(localStorage.getItem('nostr_profiles')) || {},
-    loginMethod: localStorage.getItem('nostr_login_method') || 'extension', // 'extension' or 'read-only'
+    loginMethod: localStorage.getItem('nostr_login_method') || 'extension', // 'extension', 'read-only', or 'connect'
+    connectData: JSON.parse(localStorage.getItem('nostr_connect_data')) || null, // { signerPubkey, clientSecretKey }
 
     /**
      * Extension Login (NIP-07)
@@ -66,12 +67,29 @@ export const AuthManager = {
         }
     },
 
+    /**
+     * Nostr Connect Login (NIP-46)
+     */
+    async loginConnect(signerPubkey, clientSecretKeyHex) {
+        this.userPubkey = signerPubkey;
+        this.loginMethod = 'connect';
+        this.connectData = { signerPubkey, clientSecretKey: clientSecretKeyHex };
+
+        localStorage.setItem('nostr_user_pubkey', signerPubkey);
+        localStorage.setItem('nostr_login_method', 'connect');
+        localStorage.setItem('nostr_connect_data', JSON.stringify(this.connectData));
+
+        return this.userPubkey;
+    },
+
     /* Clears session data and reloads the application. */
     logout() {
         this.userPubkey = null;
         this.loginMethod = null;
+        this.connectData = null;
         localStorage.removeItem('nostr_user_pubkey');
         localStorage.removeItem('nostr_login_method');
+        localStorage.removeItem('nostr_connect_data');
         location.reload();
     },
 
@@ -93,8 +111,11 @@ export const AuthManager = {
         return !!this.userPubkey;
     },
 
-    /* Returns true if the user can sign events (has extension) */
+    /* Returns true if the user can sign events */
     canSign() {
-        return this.isLoggedIn() && this.loginMethod === 'extension' && !!window.nostr;
+        if (!this.isLoggedIn()) return false;
+        if (this.loginMethod === 'extension' && !!window.nostr) return true;
+        if (this.loginMethod === 'connect' && this.connectData) return true;
+        return false;
     }
 };

@@ -16,22 +16,27 @@ export class JournalManager {
 
         this.isSyncing = true;
 
-        const filters = {
-            kinds: [1, 30024],
-            authors: [AuthManager.userPubkey],
-            "#t": ["spatial_anchor"]
-        };
-
         try {
-            // 1. Fetch from Nostr
-            const nostrEvents = await this.nostr.fetchEvents(filters);
+            // 1. Fetch from Nostr (Public Anchors Kind 1)
+            const publicAnchors = await this.nostr.fetchEvents({
+                kinds: [1],
+                authors: [AuthManager.userPubkey],
+                "#t": ["spatial_anchor"]
+            });
 
-            // 2. Fetch from Local Storage
+            // 2. Fetch Remote Drafts (Kind 30024 & Kind 30078)
+            const remoteDrafts = await this.nostr.fetchEvents({
+                kinds: [30024, 30078],
+                authors: [AuthManager.userPubkey],
+                "#t": ["spatial_anchor"]
+            });
+
+            // 3. Fetch from Local Storage
             const localDrafts = JSON.parse(localStorage.getItem('local_draft_storage') || '[]')
                 .filter(d => d.pubkey === AuthManager.userPubkey);
 
-            // 3. Merge and Sort
-            const allEntries = [...nostrEvents, ...localDrafts];
+            // 4. Merge and Sort
+            const allEntries = [...publicAnchors, ...remoteDrafts, ...localDrafts];
 
             /* Check for actual changes: only process if the count differs. */
             if (allEntries.length === this.entries.length) {
@@ -42,6 +47,11 @@ export class JournalManager {
             this.entries = allEntries.sort((a, b) => b.created_at - a.created_at);
             this.map.clearDraftLayers();
             this.entries.forEach(event => this.renderEntry(event));
+
+            // 5. Proactive Sync: If we can sign, try to push local drafts to relay (Kind 30078)
+            if (AuthManager.canSign() && localDrafts.length > 0) {
+                this.uploadLocalDraftsToRelay(localDrafts);
+            }
 
         } catch (err) {
             console.error("Journal sync error", err);
@@ -60,11 +70,30 @@ export class JournalManager {
 
         const profile = AuthManager.profileCache[event.pubkey] || null;
 
-        const isDraft = event.kind === 30024 || event.kind === 'local';
+        const isDraft = event.kind === 30024 || event.kind === 30078 || event.kind === 'local';
         const popupHTML = this.map.createPopupHTML(event, profile, category, isDraft);
 
         const type = isDraft ? 'draft' : 'public';
         this.map.addMarker(event.id, parseFloat(lat), parseFloat(lng), popupHTML, category, type);
+    }
+
+    /**
+     * Uploads local drafts to a relay as Kind 30078 "Borradores de Paso".
+     */
+    async uploadLocalDraftsToRelay(localDrafts) {
+        for (const draft of localDrafts) {
+            try {
+                // Use a unique d-tag for each draft to avoid overwriting all with one
+                const dTag = `draft_${draft.id.replace('local_', '')}`;
+                const success = await this.nostr.publishAppData(dTag, draft);
+
+                if (success) {
+                    console.log(`☁️ Draft ${draft.id} synced to relay.`);
+                }
+            } catch (err) {
+                console.error("Draft sync to relay failed", err);
+            }
+        }
     }
 
     /* Opens the journal modal with current data and updates content in background. */
@@ -107,7 +136,9 @@ export class JournalManager {
                     const filtered = drafts.filter(d => d.id !== eventId);
                     localStorage.setItem('local_draft_storage', JSON.stringify(filtered));
                     success = true;
-                } catch (e) { console.error(e); }
+                } catch (e) {
+                    console.error(e);
+                }
             } else {
                 if (!AuthManager.canSign()) {
                     showToast("⚠️ Modo solo lectura. No puedes borrar anclas de la red.", "info");
