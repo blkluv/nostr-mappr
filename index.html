@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Nostr Spatial Anchoring</title>
+    <title>IRL.TRAVEL</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="src/style.css">
@@ -20,7 +20,7 @@
         class="absolute top-5 left-2.5 right-[180px] flex items-center gap-3 z-[950] pointer-events-none md:right-[200px]">
         <div id="search-container"
             class="flex items-center justify-between w-[350px] shrink-0 bg-white/80 backdrop-blur-md border border-white/30 rounded-full shadow-lg p-1 pointer-events-auto transition-all duration-300">
-            <input type="text" id="search-input" placeholder="Buscar dirección o ciudad..."
+            <input type="text" id="search-input" placeholder="Search address or city..."
                 class="w-full bg-transparent border-none px-4 py-2 outline-none text-sm text-slate-800 placeholder:text-slate-400">
             <button id="btn-clear-search"
                 class="hidden px-2 text-slate-400 hover:text-slate-600 transition-colors">✕</button>
@@ -47,7 +47,7 @@
     </div>
 
     <!-- Location Button -->
-    <button id="btn-locate-me" title="Centrar en mi ubicación"
+    <button id="btn-locate-me" title="Center on my location"
         class="absolute bottom-[95px] right-3 z-[1000] w-10 h-10 bg-white border border-slate-200 rounded-lg shadow-md flex items-center justify-center hover:bg-slate-50 transition-colors">
         <i class="fas fa-crosshairs text-slate-700 text-lg"></i>
     </button>
@@ -58,7 +58,7 @@
         <img id="user-avatar-small" src="https://www.gravatar.com/avatar/0?d=mp" alt="User"
             class="w-10 h-10 rounded-full border-2 border-indigo-500 object-cover shadow-sm">
         <div class="user-info-mini flex flex-col overflow-hidden">
-            <span id="user-name-mini" class="text-sm font-extrabold text-slate-900 truncate">Invitado</span>
+            <span id="user-name-mini" class="text-sm font-extrabold text-slate-900 truncate">Guest</span>
             <span id="user-pubkey-mini" class="text-[10px] text-slate-500 font-mono">@...</span>
         </div>
     </div>
@@ -68,16 +68,16 @@
         class="absolute right-5 top-1/2 -translate-y-1/2 flex flex-col gap-5 z-[1100] pointer-events-auto">
         <button id="btn-open-journal"
             class="w-16 h-16 rounded-full bg-white/60 backdrop-blur-md border border-white/40 shadow-xl flex flex-col items-center justify-center gap-1 hover:scale-110 transition-transform group"
-            title="Diario">
+            title="Journal">
             <i class="fas fa-book text-indigo-600 text-xl group-hover:text-indigo-700"></i>
-            <span class="text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Diario</span>
+            <span class="text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Journal</span>
         </button>
 
         <button id="btn-quick-pop"
             class="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 flex flex-col items-center justify-center gap-1 border border-white/20 hover:scale-110 transition-transform"
             title="Proof of Presence">
             <i class="fas fa-map-pin text-xl"></i>
-            <span class="text-[9px] font-extrabold uppercase tracking-wider">PoP</span>
+            <span class="text-[9px] font-extrabold uppercase tracking-wider">Pin</span>
         </button>
     </div>
 
@@ -101,7 +101,7 @@
                 class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500">
             </div>
         </label>
-        <span class="text-xs font-semibold text-slate-700">Modo Prueba (Sin firma)</span>
+        <span class="text-xs font-semibold text-slate-700">Test Mode (No signature)</span>
     </div>
 
 </body>

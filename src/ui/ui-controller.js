@@ -60,7 +60,7 @@ function getProfileModalHTML(profile = null) {
                     </p>
                     ${isReadOnly ? `
                         <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 text-xs text-indigo-700 font-medium">
-                            Connect an extension or use Nostr Connect to publish anchors.
+                            Connect an extension or use Nostr Connect to publish pins.
                         </div>
                     ` : `
                         <button class="w-full flex items-center justify-center gap-2 py-3 border border-slate-200 rounded-2xl font-bold text-slate-700 hover:bg-slate-50 transition-colors">
@@ -138,7 +138,7 @@ export function getDraftModalHTML(lat, lng) {
             <div class="space-y-4">
                 <div class="flex flex-col gap-1.5">
                     <label class="text-[10px] font-black text-indigo-600 uppercase tracking-widest ml-1">PLACE TITLE</label>
-                    <input type="text" id="draft-title" placeholder="Ex: Warehouse Space..." 
+                    <input type="text" id="draft-title" placeholder="Ex: Chick-fil-A" 
                            class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 placeholder:text-slate-400">
                 </div>
 
@@ -397,7 +397,7 @@ export function getPublishModalHTML(lat, lng) {
         <div class="p-8 flex flex-col gap-6 animate-in fade-in zoom-in duration-300 max-h-[90vh] overflow-y-auto w-full">
             <button id="btn-close-publish" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl transition-colors">×</button>
             <div class="text-center">
-                <h2 class="text-2xl font-black text-slate-900 uppercase">🚀 Publish Anchor</h2>
+                <h2 class="text-2xl font-black text-slate-900 uppercase">🚀 Publish Pin</h2>
                 <span class="inline-block mt-2 bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-[10px] font-mono font-bold border border-indigo-100 uppercase tracking-widest">
                     📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}
                 </span>
@@ -411,7 +411,7 @@ export function getPublishModalHTML(lat, lng) {
 
                 <div class="flex flex-col gap-1.5">
                     <label class="text-[10px] font-black text-indigo-600 uppercase tracking-widest ml-1">DESCRIPTION / REVIEW</label>
-                    <textarea id="pub-description" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 h-24 resize-none" placeholder="Tell why this place is special..."></textarea>
+                    <textarea id="pub-description" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 h-24 resize-none" placeholder="Tell us about the vibes.."></textarea>
                 </div>
 
                 <div class="flex flex-col gap-1.5">

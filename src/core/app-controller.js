@@ -11,7 +11,7 @@ import { GeoUtils } from '../utils/geo-utils.js';
 export class AppController {
     constructor() {
         this.relays = store.state.relays;
-        this.coords = [-32.9468, -60.6393]; // Rosario base
+        this.coords = [33.7550, -84.3732]; // Rosario base
 
         this.map = new MapManager('map', this.coords);
         this.nostr = new NostrService(this.relays);
