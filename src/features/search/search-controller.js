@@ -2,7 +2,6 @@ import { AuthManager } from '../../core/auth.js';
 import { CATEGORIES } from '../../core/categories.js';
 
 /* --- FLOATING UI ELEMENTS --- */
-export function initSearch(mapManager) {
 const userNameMini = document.getElementById('user-name-mini');
 const userAvatarMini = document.getElementById('user-avatar-small');
 const userPubkeyMini = document.getElementById('user-pubkey-mini');
