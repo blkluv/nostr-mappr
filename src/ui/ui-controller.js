@@ -1,5 +1,5 @@
 import { AuthManager } from '../../core/auth.js';
-import { CATEGORIAS } from '../../core/categories.js';
+import { CATEGORIES } from '../../core/categories.js';
 
 /* --- FLOATING UI ELEMENTS --- */
 const userNameMini = document.getElementById('user-name-mini');
@@ -138,7 +138,7 @@ export function getDraftModalHTML(lat, lng) {
             <div class="space-y-4">
                 <div class="flex flex-col gap-1.5">
                     <label class="text-[10px] font-black text-indigo-600 uppercase tracking-widest ml-1">PLACE TITLE</label>
-                    <input type="text" id="draft-title" placeholder="Ex: Corner Cafe..." 
+                    <input type="text" id="draft-title" placeholder="Ex: Warehouse Space..." 
                            class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 placeholder:text-slate-400">
                 </div>
 
@@ -406,7 +406,7 @@ export function getPublishModalHTML(lat, lng) {
             <div class="space-y-4">
                 <div class="flex flex-col gap-1.5">
                     <label class="text-[10px] font-black text-indigo-600 uppercase tracking-widest ml-1">PLACE NAME</label>
-                    <input type="text" id="pub-title" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800" placeholder="Ex: Corner Cafe...">
+                    <input type="text" id="pub-title" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800" placeholder="Ex: Warehouse Space...">
                 </div>
 
                 <div class="flex flex-col gap-1.5">
