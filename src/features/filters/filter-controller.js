@@ -1,4 +1,4 @@
-import { CATEGORIAS } from '../../core/categories.js';
+import { CATEGORIES } from '../../core/categories.js';
 
 export function initFilters(mapManager) {
     const filterContainer = document.getElementById('filter-bar-container');
