@@ -1,5 +1,5 @@
-import { AuthManager } from '../core/auth.js';
-import { CATEGORIES } from '../core/categories.js';
+import { AuthManager } from '../../core/auth.js';
+import { CATEGORIES } from '../../core/categories.js';
 
 /* --- FLOATING UI ELEMENTS --- */
 const userNameMini = document.getElementById('user-name-mini');
